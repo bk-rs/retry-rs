@@ -12,4 +12,34 @@ keywords = []
 categories = []
 readme = "README.md"
 
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = [
+    "google_cloud_workflows",
+    "exponential_backoff",
+    "_priv_test_http",
+]
+
+# policies
+all-policies = [
+    "google_cloud_workflows",
+    "exponential_backoff",
+]
+
+google_cloud_workflows = []
+exponential_backoff = ["rand"]
+_priv_test_http = ["http"]
+
 [dependencies]
+rand = { version = "0.8", default-features = false, optional = true }
+
+http = { version = "0.2", default-features = false, optional = true }
+
+[package.metadata.cargo-all-features]
+skip_optional_dependencies = true
+skip_feature_sets = [
+    ["google_cloud_workflows"],
+    ["exponential_backoff"],
+]
