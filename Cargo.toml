@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "async-retry",
+    "retry-backoff",
     "retry-policy",
 ]
