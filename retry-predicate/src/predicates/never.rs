@@ -1,45 +1,14 @@
 //! [Ref Function: retry.never](https://cloud.google.com/workflows/docs/reference/stdlib/retry/never)
 
-use core::{fmt, marker::PhantomData};
-
 use crate::retry_predicate::RetryPredicate;
 
 //
-pub struct Predicate<E> {
-    phantom: PhantomData<E>,
-}
-
-impl<E> fmt::Debug for Predicate<E> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("NeverPredicate").finish()
-    }
-}
-
-impl<E> Clone for Predicate<E> {
-    fn clone(&self) -> Self {
-        Self {
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<E> Default for Predicate<E> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<E> Predicate<E> {
-    pub fn new() -> Self {
-        Self {
-            phantom: PhantomData,
-        }
-    }
-}
+#[derive(Debug, Clone, Default)]
+pub struct Predicate;
 
 //
-impl<E> RetryPredicate<E> for Predicate<E> {
-    fn require_retry(&self, _err: &E) -> bool {
+impl<Params> RetryPredicate<Params> for Predicate {
+    fn require_retry(&self, _params: &Params) -> bool {
         false
     }
 
@@ -54,7 +23,7 @@ mod tests {
 
     #[test]
     fn test_impl_retry_predicate() {
-        assert!(!RetryPredicate::require_retry(&Predicate::new(), &()));
-        assert_eq!(RetryPredicate::<()>::name(&Predicate::new()), "Never");
+        assert!(!RetryPredicate::require_retry(&Predicate, &()));
+        assert_eq!(RetryPredicate::<()>::name(&Predicate), "Never");
     }
 }

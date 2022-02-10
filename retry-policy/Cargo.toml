@@ -20,12 +20,11 @@ default = ["std"]
 std = ["alloc", "retry-backoff/std", "retry-predicate/std"]
 alloc = ["retry-backoff/alloc", "retry-predicate/alloc"]
 
+# policies
+
 [dependencies]
 retry-backoff = { version = "0.0", default-features = false, path = "../retry-backoff" }
 retry-predicate = { version = "0.0", default-features = false, path = "../retry-predicate" }
 
 [package.metadata.cargo-all-features]
 skip_optional_dependencies = true
-skip_feature_sets = [
-    ["google_cloud_workflows"],
-]

@@ -73,6 +73,7 @@ mod tests {
         use core::time::Duration;
 
         let backoff = Backoff::new(1.0, 60.0, 2.0);
+
         for (attempts, secs) in &[
             (1, 1),
             (2, 2),
@@ -97,6 +98,7 @@ mod tests {
         use crate::retry_backoff::RetryBackoff;
 
         let backoff = Backoff::new(1.0, 60.0, 2.0);
+
         for (attempts, secs) in &[
             (1, 1),
             (2, 2),

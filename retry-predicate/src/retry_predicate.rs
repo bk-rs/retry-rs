@@ -1,9 +1,9 @@
 use core::fmt;
 
 //
-pub trait RetryPredicate<E> {
+pub trait RetryPredicate<Params> {
     /// returns true if a retry; false otherwise
-    fn require_retry(&self, err: &E) -> bool;
+    fn require_retry(&self, params: &Params) -> bool;
 
     fn name(&self) -> &str {
         "_"
@@ -11,7 +11,7 @@ pub trait RetryPredicate<E> {
 }
 
 //
-impl<E> fmt::Debug for dyn RetryPredicate<E> {
+impl<Params> fmt::Debug for dyn RetryPredicate<Params> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("RetryPredicate")
             .field(&RetryPredicate::name(self))
@@ -19,7 +19,7 @@ impl<E> fmt::Debug for dyn RetryPredicate<E> {
     }
 }
 
-impl<E> fmt::Debug for dyn RetryPredicate<E> + Send {
+impl<Params> fmt::Debug for dyn RetryPredicate<Params> + Send {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("RetryPredicate")
             .field(&RetryPredicate::name(self))
@@ -27,7 +27,7 @@ impl<E> fmt::Debug for dyn RetryPredicate<E> + Send {
     }
 }
 
-impl<E> fmt::Debug for dyn RetryPredicate<E> + Send + Sync {
+impl<Params> fmt::Debug for dyn RetryPredicate<Params> + Send + Sync {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("RetryPredicate")
             .field(&RetryPredicate::name(self))

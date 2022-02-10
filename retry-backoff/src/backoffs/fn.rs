@@ -52,13 +52,9 @@ mod tests {
 
     #[test]
     fn test_impl_retry_backoff() {
-        assert_eq!(
-            RetryBackoff::delay(&Backoff::from(|_attempts| Duration::from_secs(1)), 1),
-            Duration::from_secs(1)
-        );
-        assert_eq!(
-            RetryBackoff::name(&Backoff::from(|_attempts| Duration::from_secs(1))),
-            "Fn"
-        );
+        let backoff = Backoff::from(fn_demo);
+
+        assert_eq!(RetryBackoff::delay(&backoff, 1), Duration::from_secs(1));
+        assert_eq!(RetryBackoff::name(&backoff), "Fn");
     }
 }

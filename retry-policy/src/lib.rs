@@ -1,5 +1,12 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 //
-pub mod predicate;
+mod retry_policy;
+
+pub use self::retry_policy::RetryPolicy;
 
 //
 pub mod policies;

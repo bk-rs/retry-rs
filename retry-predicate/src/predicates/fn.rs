@@ -4,19 +4,19 @@ use core::fmt;
 use crate::retry_predicate::RetryPredicate;
 
 //
-pub struct Predicate<E> {
-    f: Box<dyn Fn(&E) -> bool + Send + Sync>,
+pub struct Predicate<Params> {
+    f: Box<dyn Fn(&Params) -> bool + Send + Sync>,
 }
 
-impl<E> fmt::Debug for Predicate<E> {
+impl<Params> fmt::Debug for Predicate<Params> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FnPredicate").finish_non_exhaustive()
     }
 }
 
-impl<F, E> From<F> for Predicate<E>
+impl<F, Params> From<F> for Predicate<Params>
 where
-    F: Fn(&E) -> bool + Send + Sync + 'static,
+    F: Fn(&Params) -> bool + Send + Sync + 'static,
 {
     fn from(f: F) -> Self {
         Self { f: Box::new(f) }
@@ -24,9 +24,9 @@ where
 }
 
 //
-impl<E> RetryPredicate<E> for Predicate<E> {
-    fn require_retry(&self, err: &E) -> bool {
-        (self.f)(err)
+impl<Params> RetryPredicate<Params> for Predicate<Params> {
+    fn require_retry(&self, params: &Params) -> bool {
+        (self.f)(params)
     }
 
     fn name(&self) -> &str {
@@ -36,7 +36,7 @@ impl<E> RetryPredicate<E> for Predicate<E> {
 
 //
 #[cfg(test)]
-fn fn_demo(_err: &usize) -> bool {
+fn fn_demo(_params: &usize) -> bool {
     true
 }
 
@@ -47,18 +47,14 @@ mod tests {
     #[test]
     fn test_from_f() {
         let _ = Predicate::from(fn_demo);
-        let _ = Predicate::from(|_err: &usize| true);
+        let _ = Predicate::from(|_params: &usize| true);
     }
 
     #[test]
     fn test_impl_retry_predicate() {
-        assert!(Predicate::require_retry(
-            &Predicate::from(|_err: &usize| true),
-            &0
-        ));
-        assert_eq!(
-            Predicate::name(&Predicate::from(|_err: &usize| true),),
-            "Fn"
-        );
+        let predicate = Predicate::from(fn_demo);
+
+        assert!(Predicate::require_retry(&predicate, &0));
+        assert_eq!(Predicate::name(&predicate), "Fn");
     }
 }

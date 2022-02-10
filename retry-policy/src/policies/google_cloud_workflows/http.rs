@@ -1,25 +1,22 @@
 use core::fmt;
 
-#[cfg(feature = "alloc")]
-/// [Object: http.default_retry](https://cloud.google.com/workflows/docs/reference/stdlib/http/default_retry)
-pub fn default_retry() -> super::Policy<Error> {
-    use retry_backoff::backoffs::google_cloud_workflows::Backoff;
-    use retry_predicate::predicates::FnPredicate;
+use retry_backoff::backoffs::google_cloud_workflows::Backoff;
+use retry_predicate::predicates::FnPredicate;
 
-    super::Policy::new(
+use super::Policy;
+
+/// [Object: http.default_retry](https://cloud.google.com/workflows/docs/reference/stdlib/http/default_retry)
+pub fn default_retry() -> Policy<Error> {
+    Policy::new(
         FnPredicate::from(default_retry_predicate),
         5,
         Backoff::default(),
     )
 }
 
-#[cfg(feature = "alloc")]
 /// [Object: http.default_retry_non_idempotent](https://cloud.google.com/workflows/docs/reference/stdlib/http/default_retry_non_idempotent)
-pub fn default_retry_non_idempotent() -> super::Policy<Error> {
-    use retry_backoff::backoffs::google_cloud_workflows::Backoff;
-    use retry_predicate::predicates::FnPredicate;
-
-    super::Policy::new(
+pub fn default_retry_non_idempotent() -> Policy<Error> {
+    Policy::new(
         FnPredicate::from(default_retry_predicate_non_idempotent),
         5,
         Backoff::default(),
@@ -86,14 +83,10 @@ impl std::error::Error for Error {}
 
 #[cfg(test)]
 mod tests {
-    #[allow(unused_imports)]
     use super::*;
 
-    #[cfg(feature = "alloc")]
     #[test]
     fn test_default_retry() {
-        use retry_backoff::backoffs::google_cloud_workflows::Backoff;
-
         let policy = default_retry();
         for err in &[
             Error::TooManyRequests {
@@ -117,11 +110,8 @@ mod tests {
         assert_eq!(policy.backoff, Backoff::default());
     }
 
-    #[cfg(feature = "alloc")]
     #[test]
     fn test_default_retry_non_idempotent() {
-        use retry_backoff::backoffs::google_cloud_workflows::Backoff;
-
         let policy = default_retry_non_idempotent();
         for err in &[
             Error::TooManyRequests {
