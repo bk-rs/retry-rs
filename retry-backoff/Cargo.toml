@@ -12,5 +12,12 @@ keywords = []
 categories = []
 readme = "README.md"
 
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = []
+
+# backoffs
+
 [dependencies]
-rand = { version = "0.8", default-features = false, optional = true }
