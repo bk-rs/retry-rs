@@ -41,7 +41,7 @@ where
         unreachable!()
     }
 
-    fn retry(&self, params: &PParams, attempts: usize) -> ControlFlow<StopReason, Duration> {
+    fn next_step(&self, params: &PParams, attempts: usize) -> ControlFlow<StopReason, Duration> {
         (self.f)(params, attempts)
     }
 
@@ -73,7 +73,7 @@ mod tests {
         let policy = Policy::from(fn_demo);
 
         assert_eq!(
-            RetryPolicy::retry(&policy, &(), 1),
+            RetryPolicy::next_step(&policy, &(), 1),
             ControlFlow::Continue(Duration::from_secs(1))
         );
         assert_eq!(RetryPolicy::name(&policy), "Fn");

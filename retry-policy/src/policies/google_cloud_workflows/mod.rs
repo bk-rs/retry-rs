@@ -58,14 +58,34 @@ mod tests {
 
         use retry_predicate::predicates::AlwaysPredicate;
 
-        use crate::retry_policy::RetryPolicy;
+        use crate::retry_policy::{RetryPolicy, StopReason};
 
+        //
         let policy = Policy::new(AlwaysPredicate, 1, Backoff::default());
 
         assert_eq!(
-            RetryPolicy::retry(&policy, &(), 1),
+            RetryPolicy::next_step(&policy, &(), 1),
             ControlFlow::Continue(Duration::from_secs(1))
         );
         assert_eq!(RetryPolicy::name(&policy), "GoogleCloudWorkflows");
+
+        //
+        // Ref https://cloud.google.com/workflows/docs/reference/syntax/retrying#try-retry
+        let policy = Policy::new(AlwaysPredicate, 8, Backoff::new(1.0, 60.0, 2.0));
+
+        for (attempts, flow) in &[
+            (1, ControlFlow::Continue(Duration::from_secs(1))),
+            (2, ControlFlow::Continue(Duration::from_secs(2))),
+            (3, ControlFlow::Continue(Duration::from_secs(4))),
+            (4, ControlFlow::Continue(Duration::from_secs(8))),
+            (5, ControlFlow::Continue(Duration::from_secs(16))),
+            (6, ControlFlow::Continue(Duration::from_secs(32))),
+            (7, ControlFlow::Continue(Duration::from_secs(60))),
+            (8, ControlFlow::Continue(Duration::from_secs(60))),
+            (9, ControlFlow::Break(StopReason::MaxRetriesReached)),
+            (10, ControlFlow::Break(StopReason::MaxRetriesReached)),
+        ] {
+            assert_eq!(RetryPolicy::next_step(&policy, &(), *attempts), *flow);
+        }
     }
 }

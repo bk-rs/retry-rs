@@ -61,7 +61,7 @@ mod tests {
         );
 
         assert_eq!(
-            RetryPolicy::retry(&policy, &(), 1),
+            RetryPolicy::next_step(&policy, &(), 1),
             ControlFlow::Continue(Duration::from_secs(1))
         );
         assert_eq!(RetryPolicy::name(&policy), "Simple");

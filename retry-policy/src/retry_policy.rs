@@ -9,8 +9,8 @@ pub trait RetryPolicy<PParams> {
     fn predicate(&self) -> &dyn RetryPredicate<PParams>;
     fn max_retries(&self) -> usize;
 
-    fn retry(&self, params: &PParams, attempts: usize) -> ControlFlow<StopReason, Duration> {
-        if self.max_retries() > attempts {
+    fn next_step(&self, params: &PParams, attempts: usize) -> ControlFlow<StopReason, Duration> {
+        if attempts > self.max_retries() {
             return ControlFlow::Break(StopReason::MaxRetriesReached);
         }
 

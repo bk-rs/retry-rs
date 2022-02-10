@@ -72,6 +72,7 @@ mod tests {
     fn test_delay() {
         use core::time::Duration;
 
+        // Ref https://cloud.google.com/workflows/docs/reference/syntax/retrying#try-retry
         let backoff = Backoff::new(1.0, 60.0, 2.0);
 
         for (attempts, secs) in &[
@@ -97,6 +98,7 @@ mod tests {
 
         use crate::retry_backoff::RetryBackoff;
 
+        // Ref https://cloud.google.com/workflows/docs/reference/syntax/retrying#try-retry
         let backoff = Backoff::new(1.0, 60.0, 2.0);
 
         for (attempts, secs) in &[
