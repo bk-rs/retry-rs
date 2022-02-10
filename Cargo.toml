@@ -3,4 +3,5 @@ members = [
     "async-retry",
     "retry-backoff",
     "retry-policy",
+    "retry-predicate",
 ]
