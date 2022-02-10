@@ -12,4 +12,14 @@ keywords = []
 categories = []
 readme = "README.md"
 
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = ["std"]
+std = ["alloc"]
+alloc = []
+
+# predicates
+
 [dependencies]

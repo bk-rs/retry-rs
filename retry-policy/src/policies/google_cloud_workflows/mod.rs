@@ -2,16 +2,14 @@
 //!
 
 use retry_backoff::backoffs::google_cloud_workflows::Backoff;
-
-use crate::predicate::Predicate;
+use retry_predicate::RetryPredicate;
 
 pub mod http;
 
 //
 #[derive(Debug)]
 pub struct Policy<E> {
-    /// returns true if a retry; false otherwise
-    pub predicate: Box<dyn Predicate<E> + Send + Sync>,
+    pub predicate: Box<dyn RetryPredicate<E> + Send + Sync>,
     pub max_retries: usize,
     pub backoff: Backoff,
 }
@@ -19,7 +17,7 @@ pub struct Policy<E> {
 impl<E> Policy<E> {
     pub fn new<P>(predicate: P, max_retries: usize, backoff: Backoff) -> Self
     where
-        P: Predicate<E> + Send + Sync + 'static,
+        P: RetryPredicate<E> + Send + Sync + 'static,
     {
         Self {
             predicate: Box::new(predicate),

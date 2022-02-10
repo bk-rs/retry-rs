@@ -2,20 +2,20 @@
 
 use core::{fmt, marker::PhantomData};
 
-use super::Predicate;
+use crate::retry_predicate::RetryPredicate;
 
 //
-pub struct AlwaysPredicate<E> {
+pub struct Predicate<E> {
     phantom: PhantomData<E>,
 }
 
-impl<E> fmt::Debug for AlwaysPredicate<E> {
+impl<E> fmt::Debug for Predicate<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("AlwaysPredicate").finish()
     }
 }
 
-impl<E> Clone for AlwaysPredicate<E> {
+impl<E> Clone for Predicate<E> {
     fn clone(&self) -> Self {
         Self {
             phantom: PhantomData,
@@ -23,13 +23,13 @@ impl<E> Clone for AlwaysPredicate<E> {
     }
 }
 
-impl<E> Default for AlwaysPredicate<E> {
+impl<E> Default for Predicate<E> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<E> AlwaysPredicate<E> {
+impl<E> Predicate<E> {
     pub fn new() -> Self {
         Self {
             phantom: PhantomData,
@@ -38,7 +38,7 @@ impl<E> AlwaysPredicate<E> {
 }
 
 //
-impl<E> Predicate<E> for AlwaysPredicate<E> {
+impl<E> RetryPredicate<E> for Predicate<E> {
     fn require_retry(&self, _err: &E) -> bool {
         true
     }
@@ -53,8 +53,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_impl_predicate() {
-        assert!(Predicate::require_retry(&AlwaysPredicate::new(), &()));
-        assert_eq!(Predicate::<()>::name(&AlwaysPredicate::new()), "Always");
+    fn test_impl_retry_predicate() {
+        assert!(RetryPredicate::require_retry(&Predicate::new(), &()));
+        assert_eq!(RetryPredicate::<()>::name(&Predicate::new()), "Always");
     }
 }

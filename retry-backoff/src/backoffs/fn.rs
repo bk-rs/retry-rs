@@ -10,7 +10,7 @@ pub struct Backoff {
 
 impl fmt::Debug for Backoff {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Backoff").finish_non_exhaustive()
+        f.debug_struct("FnBackoff").finish_non_exhaustive()
     }
 }
 
