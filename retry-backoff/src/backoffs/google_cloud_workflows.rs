@@ -1,7 +1,3 @@
-use core::{cmp::min, time::Duration};
-
-use crate::retry_backoff::RetryBackoff;
-
 //
 #[derive(Debug, Clone, PartialEq)]
 pub struct Backoff {
@@ -30,7 +26,10 @@ impl Backoff {
         }
     }
 
-    pub fn delay(&self, attempts: usize) -> Duration {
+    #[cfg(feature = "std")]
+    pub fn delay(&self, attempts: usize) -> core::time::Duration {
+        use core::{cmp::min, time::Duration};
+
         match attempts {
             0 => unreachable!(),
             1 => Duration::from_millis((self.initial_delay_secs * 1000.0).round() as u64),
@@ -43,8 +42,9 @@ impl Backoff {
 }
 
 //
-impl RetryBackoff for Backoff {
-    fn delay(&self, attempts: usize) -> Duration {
+#[cfg(feature = "std")]
+impl crate::retry_backoff::RetryBackoff for Backoff {
+    fn delay(&self, attempts: usize) -> core::time::Duration {
         Self::delay(self, attempts)
     }
 
@@ -67,8 +67,11 @@ mod tests {
         assert_eq!(Backoff::default(), default_backoff());
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_delay() {
+        use core::time::Duration;
+
         let backoff = Backoff::new(1.0, 60.0, 2.0);
         for (attempts, secs) in &[
             (1, 1),
@@ -86,8 +89,13 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_impl_retry_backoff() {
+        use core::time::Duration;
+
+        use crate::retry_backoff::RetryBackoff;
+
         let backoff = Backoff::new(1.0, 60.0, 2.0);
         for (attempts, secs) in &[
             (1, 1),

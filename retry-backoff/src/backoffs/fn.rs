@@ -1,10 +1,17 @@
-use core::time::Duration;
+use alloc::boxed::Box;
+use core::{fmt, time::Duration};
 
 use crate::retry_backoff::RetryBackoff;
 
 //
 pub struct Backoff {
     f: Box<dyn Fn(usize) -> Duration + Send + Sync>,
+}
+
+impl fmt::Debug for Backoff {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Backoff").finish_non_exhaustive()
+    }
 }
 
 impl<F> From<F> for Backoff

@@ -1,6 +1,8 @@
 //
+#[cfg(feature = "alloc")]
 pub mod r#fn;
 
+#[cfg(feature = "alloc")]
 pub use r#fn::Backoff as FnBackoff;
 
 //

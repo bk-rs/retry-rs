@@ -10,6 +10,7 @@ pub trait RetryBackoff {
     }
 }
 
+//
 impl fmt::Debug for dyn RetryBackoff {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("RetryBackoff")
@@ -17,6 +18,15 @@ impl fmt::Debug for dyn RetryBackoff {
             .finish()
     }
 }
+
+impl fmt::Debug for dyn RetryBackoff + Send {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("RetryBackoff")
+            .field(&RetryBackoff::name(self))
+            .finish()
+    }
+}
+
 impl fmt::Debug for dyn RetryBackoff + Send + Sync {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("RetryBackoff")
