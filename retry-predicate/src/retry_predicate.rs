@@ -3,7 +3,8 @@ use core::fmt;
 //
 pub trait RetryPredicate<Params> {
     /// returns true if a retry; false otherwise
-    fn require_retry(&self, params: &Params) -> bool;
+    /// [Ref](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/function/Predicate.html#test(T))
+    fn test(&self, params: &Params) -> bool;
 
     fn name(&self) -> &str {
         "_"

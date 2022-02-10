@@ -14,7 +14,7 @@ pub trait RetryPolicy<PParams> {
             return ControlFlow::Break(StopReason::MaxRetriesReached);
         }
 
-        if !self.predicate().require_retry(params) {
+        if !self.predicate().test(params) {
             return ControlFlow::Break(StopReason::PredicateIsNotAllowed);
         }
 

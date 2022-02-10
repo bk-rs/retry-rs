@@ -100,11 +100,11 @@ mod tests {
             Error::ConnectionError,
             Error::TimeoutError,
         ] {
-            assert!(policy.predicate.require_retry(err));
+            assert!(policy.predicate.test(err));
         }
         #[allow(clippy::single_element_loop)]
         for err in &[Error::Other] {
-            assert!(!policy.predicate.require_retry(err));
+            assert!(!policy.predicate.test(err));
         }
         assert_eq!(policy.max_retries, 5);
         assert_eq!(policy.backoff, Backoff::default());
@@ -121,7 +121,7 @@ mod tests {
                 retry_after_delay_seconds: None,
             },
         ] {
-            assert!(policy.predicate.require_retry(err));
+            assert!(policy.predicate.test(err));
         }
         for err in &[
             Error::BadGateway,
@@ -130,7 +130,7 @@ mod tests {
             Error::TimeoutError,
             Error::Other,
         ] {
-            assert!(!policy.predicate.require_retry(err));
+            assert!(!policy.predicate.test(err));
         }
         assert_eq!(policy.max_retries, 5);
         assert_eq!(policy.backoff, Backoff::default());

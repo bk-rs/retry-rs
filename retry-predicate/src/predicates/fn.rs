@@ -25,7 +25,7 @@ where
 
 //
 impl<Params> RetryPredicate<Params> for Predicate<Params> {
-    fn require_retry(&self, params: &Params) -> bool {
+    fn test(&self, params: &Params) -> bool {
         (self.f)(params)
     }
 
@@ -54,7 +54,7 @@ mod tests {
     fn test_impl_retry_predicate() {
         let predicate = Predicate::from(fn_demo);
 
-        assert!(Predicate::require_retry(&predicate, &0));
+        assert!(Predicate::test(&predicate, &0));
         assert_eq!(Predicate::name(&predicate), "Fn");
     }
 }

@@ -8,7 +8,7 @@ pub struct Predicate;
 
 //
 impl<Params> RetryPredicate<Params> for Predicate {
-    fn require_retry(&self, _params: &Params) -> bool {
+    fn test(&self, _params: &Params) -> bool {
         false
     }
 
@@ -23,7 +23,7 @@ mod tests {
 
     #[test]
     fn test_impl_retry_predicate() {
-        assert!(!RetryPredicate::require_retry(&Predicate, &()));
+        assert!(!RetryPredicate::test(&Predicate, &()));
         assert_eq!(RetryPredicate::<()>::name(&Predicate), "Never");
     }
 }

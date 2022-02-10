@@ -28,7 +28,7 @@ impl<PParams> Policy<PParams> {
 }
 
 impl<PParams> RetryPolicy<PParams> for Policy<PParams> {
-    fn backoff(&self) -> &dyn retry_backoff::RetryBackoff {
+    fn backoff(&self) -> &dyn RetryBackoff {
         self.backoff.as_ref()
     }
     fn predicate(&self) -> &dyn RetryPredicate<PParams> {
