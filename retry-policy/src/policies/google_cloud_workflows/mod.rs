@@ -3,6 +3,8 @@
 
 use core::fmt;
 
+use retry_backoff::backoffs::google_cloud_workflows::Backoff;
+
 #[cfg(feature = "http")]
 pub mod http;
 
@@ -47,56 +49,19 @@ pub fn never_predicate<E>(_: &E) -> bool {
     false
 }
 
-//
-#[derive(Debug, PartialEq)]
-pub struct Backoff {
-    pub initial_delay_secs: f32,
-    pub max_delay_secs: f32,
-    pub multiplier: f32,
-}
-
-impl Default for Backoff {
-    fn default() -> Self {
-        default_backoff()
-    }
-}
-
-impl Backoff {
-    pub fn new(initial_delay_secs: f32, max_delay_secs: f32, multiplier: f32) -> Self {
-        Self {
-            initial_delay_secs,
-            max_delay_secs,
-            multiplier,
-        }
-    }
-}
-
-/// [Object: retry.default_backoff](https://cloud.google.com/workflows/docs/reference/stdlib/retry/default_backoff)
-pub fn default_backoff() -> Backoff {
-    Backoff::new(1.0, 60.0, 1.25)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_always_predicate() {
-        let policy = Policy::<usize>::new(always_predicate, 1, default_backoff());
+        let policy = Policy::<usize>::new(always_predicate, 1, Backoff::default());
         assert!((policy.predicate)(&0));
     }
 
     #[test]
     fn test_never_predicate() {
-        let policy = Policy::<usize>::new(never_predicate, 1, default_backoff());
+        let policy = Policy::<usize>::new(never_predicate, 1, Backoff::default());
         assert!(!(policy.predicate)(&0));
-    }
-
-    #[test]
-    fn test_default_backoff() {
-        let backoff = default_backoff();
-        assert_eq!(backoff.initial_delay_secs, 1.0);
-        assert_eq!(backoff.max_delay_secs, 60.0);
-        assert_eq!(backoff.multiplier, 1.25);
     }
 }

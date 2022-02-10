@@ -17,23 +17,13 @@ all-features = true
 
 [features]
 default = [
-    "google_cloud_workflows",
-    "exponential_backoff",
     "_priv_test_http",
 ]
 
-# policies
-all-policies = [
-    "google_cloud_workflows",
-    "exponential_backoff",
-]
-
-google_cloud_workflows = []
-exponential_backoff = ["rand"]
 _priv_test_http = ["http"]
 
 [dependencies]
-rand = { version = "0.8", default-features = false, optional = true }
+retry-backoff = { version = "0.0", default-features = false, path = "../retry-backoff" }
 
 http = { version = "0.2", default-features = false, optional = true }
 
@@ -41,5 +31,4 @@ http = { version = "0.2", default-features = false, optional = true }
 skip_optional_dependencies = true
 skip_feature_sets = [
     ["google_cloud_workflows"],
-    ["exponential_backoff"],
 ]

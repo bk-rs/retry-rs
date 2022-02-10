@@ -1,17 +1,22 @@
 use core::fmt;
 
 use http::StatusCode;
+use retry_backoff::backoffs::google_cloud_workflows::Backoff;
 
-use super::{default_backoff, Policy};
+use super::Policy;
 
 /// [Object: http.default_retry](https://cloud.google.com/workflows/docs/reference/stdlib/http/default_retry)
 pub fn default_retry() -> Policy<Error> {
-    Policy::new(default_retry_predicate, 5, default_backoff())
+    Policy::new(default_retry_predicate, 5, Backoff::default())
 }
 
 /// [Object: http.default_retry_non_idempotent](https://cloud.google.com/workflows/docs/reference/stdlib/http/default_retry_non_idempotent)
 pub fn default_retry_non_idempotent() -> Policy<Error> {
-    Policy::new(default_retry_predicate_non_idempotent, 5, default_backoff())
+    Policy::new(
+        default_retry_predicate_non_idempotent,
+        5,
+        Backoff::default(),
+    )
 }
 
 pub const RETRIES_ON_STATUS_CODES: &[StatusCode] = &[
@@ -82,7 +87,7 @@ mod tests {
         assert!((policy.predicate)(&Error::ConnectionError));
         assert!((policy.predicate)(&Error::TimeoutError));
         assert_eq!(policy.max_retries, 5);
-        assert_eq!(policy.backoff, default_backoff());
+        assert_eq!(policy.backoff, Backoff::default());
     }
 
     #[test]
@@ -101,6 +106,6 @@ mod tests {
         assert!((policy.predicate)(&Error::ConnectionError));
         assert!((policy.predicate)(&Error::TimeoutError));
         assert_eq!(policy.max_retries, 5);
-        assert_eq!(policy.backoff, default_backoff());
+        assert_eq!(policy.backoff, Backoff::default());
     }
 }
