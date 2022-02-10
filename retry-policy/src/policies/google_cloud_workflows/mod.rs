@@ -38,30 +38,3 @@ impl<E> Policy<E> {
         }
     }
 }
-
-/// [Function: retry.always](https://cloud.google.com/workflows/docs/reference/stdlib/retry/always)
-pub fn always_predicate<E>(_: &E) -> bool {
-    true
-}
-
-/// [Function: retry.never](https://cloud.google.com/workflows/docs/reference/stdlib/retry/never)
-pub fn never_predicate<E>(_: &E) -> bool {
-    false
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_always_predicate() {
-        let policy = Policy::<usize>::new(always_predicate, 1, Backoff::default());
-        assert!((policy.predicate)(&0));
-    }
-
-    #[test]
-    fn test_never_predicate() {
-        let policy = Policy::<usize>::new(never_predicate, 1, Backoff::default());
-        assert!(!(policy.predicate)(&0));
-    }
-}

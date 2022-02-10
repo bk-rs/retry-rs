@@ -83,10 +83,29 @@ mod tests {
             (10, 60),
         ] {
             assert_eq!(backoff.delay(*attempts), Duration::from_secs(*secs));
+        }
+    }
+
+    #[test]
+    fn test_impl_retry_backoff() {
+        let backoff = Backoff::new(1.0, 60.0, 2.0);
+        for (attempts, secs) in &[
+            (1, 1),
+            (2, 2),
+            (3, 4),
+            (4, 8),
+            (5, 16),
+            (6, 32),
+            (7, 60),
+            (8, 60),
+            (9, 60),
+            (10, 60),
+        ] {
             assert_eq!(
                 RetryBackoff::delay(&backoff, *attempts),
                 Duration::from_secs(*secs)
             );
         }
+        assert_eq!(RetryBackoff::name(&backoff), "GoogleCloudWorkflows");
     }
 }

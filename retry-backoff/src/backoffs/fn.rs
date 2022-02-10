@@ -40,5 +40,18 @@ mod tests {
     #[test]
     fn test_from_f() {
         let _ = Backoff::from(fn_demo);
+        let _ = Backoff::from(|_attempts| Duration::from_secs(1));
+    }
+
+    #[test]
+    fn test_impl_retry_backoff() {
+        assert_eq!(
+            RetryBackoff::delay(&Backoff::from(|_attempts| Duration::from_secs(1)), 1),
+            Duration::from_secs(1)
+        );
+        assert_eq!(
+            RetryBackoff::name(&Backoff::from(|_attempts| Duration::from_secs(1))),
+            "Fn"
+        );
     }
 }
