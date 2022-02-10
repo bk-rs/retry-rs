@@ -47,6 +47,10 @@ impl RetryBackoff for Backoff {
     fn delay(&self, attempts: usize) -> Duration {
         Self::delay(self, attempts)
     }
+
+    fn name(&self) -> &str {
+        "GoogleCloudWorkflows"
+    }
 }
 
 #[cfg(test)]
