@@ -1,6 +1,5 @@
 use core::fmt;
 
-use http::StatusCode;
 use retry_backoff::backoffs::google_cloud_workflows::Backoff;
 
 use super::Policy;
@@ -19,44 +18,54 @@ pub fn default_retry_non_idempotent() -> Policy<Error> {
     )
 }
 
-pub const RETRIES_ON_STATUS_CODES: &[StatusCode] = &[
-    StatusCode::TOO_MANY_REQUESTS,
-    StatusCode::BAD_GATEWAY,
-    StatusCode::SERVICE_UNAVAILABLE,
-    StatusCode::GATEWAY_TIMEOUT,
-];
-
 /// [Function: http.default_retry_predicate](https://cloud.google.com/workflows/docs/reference/stdlib/http/default_retry_predicate)
 pub fn default_retry_predicate(err: &Error) -> bool {
-    match err {
-        Error::StatusCode(status_code) => RETRIES_ON_STATUS_CODES.contains(status_code),
-        Error::ConnectionError => true,
-        Error::TimeoutError => true,
-    }
+    matches!(
+        err,
+        Error::TooManyRequests {
+            retry_after_delay_seconds: _
+        } | &Error::BadGateway
+            | Error::ServiceUnavailable {
+                retry_after_delay_seconds: _
+            }
+            | &Error::GatewayTimeout
+            | Error::ConnectionError
+            | Error::TimeoutError
+    )
 }
-
-pub const RETRIES_ON_STATUS_CODES_NON_IDEMPOTENT: &[StatusCode] = &[
-    StatusCode::TOO_MANY_REQUESTS,
-    StatusCode::SERVICE_UNAVAILABLE,
-];
 
 /// [Function: http.default_retry_predicate_non_idempotent](https://cloud.google.com/workflows/docs/reference/stdlib/http/default_retry_predicate_non_idempotent)
 pub fn default_retry_predicate_non_idempotent(err: &Error) -> bool {
-    match err {
-        Error::StatusCode(status_code) => {
-            RETRIES_ON_STATUS_CODES_NON_IDEMPOTENT.contains(status_code)
+    matches!(
+        err,
+        Error::TooManyRequests {
+            retry_after_delay_seconds: _
+        } | Error::ServiceUnavailable {
+            retry_after_delay_seconds: _
         }
-        Error::ConnectionError => true,
-        Error::TimeoutError => true,
-    }
+    )
 }
 
 //
 #[derive(Debug)]
 pub enum Error {
-    StatusCode(StatusCode),
+    /// 429
+    TooManyRequests {
+        /// [Ref](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Retry-After)
+        retry_after_delay_seconds: Option<usize>,
+    },
+    /// 502
+    BadGateway,
+    /// 503
+    ServiceUnavailable {
+        /// [Ref](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Retry-After)
+        retry_after_delay_seconds: Option<usize>,
+    },
+    /// 504
+    GatewayTimeout,
     ConnectionError,
     TimeoutError,
+    Other(Box<dyn std::error::Error + Send + Sync + 'static>),
 }
 
 impl fmt::Display for Error {
@@ -74,18 +83,25 @@ mod tests {
     #[test]
     fn test_default_retry() {
         let policy = default_retry();
-        for status_code in &[429, 502, 503, 504] {
-            assert!((policy.predicate)(&Error::StatusCode(
-                StatusCode::try_from(*status_code).unwrap()
-            )));
+        for err in &[
+            Error::TooManyRequests {
+                retry_after_delay_seconds: None,
+            },
+            Error::BadGateway,
+            Error::ServiceUnavailable {
+                retry_after_delay_seconds: None,
+            },
+            Error::GatewayTimeout,
+            Error::ConnectionError,
+            Error::TimeoutError,
+        ] {
+            assert!((policy.predicate)(err));
         }
-        for status_code in &[200, 401] {
-            assert!(!(policy.predicate)(&Error::StatusCode(
-                StatusCode::try_from(*status_code).unwrap()
-            )));
+        for err in &[Error::Other(Box::new(std::io::Error::from(
+            std::io::ErrorKind::TimedOut,
+        )))] {
+            assert!(!(policy.predicate)(err));
         }
-        assert!((policy.predicate)(&Error::ConnectionError));
-        assert!((policy.predicate)(&Error::TimeoutError));
         assert_eq!(policy.max_retries, 5);
         assert_eq!(policy.backoff, Backoff::default());
     }
@@ -93,18 +109,25 @@ mod tests {
     #[test]
     fn test_default_retry_non_idempotent() {
         let policy = default_retry_non_idempotent();
-        for status_code in &[429, 503] {
-            assert!((policy.predicate)(&Error::StatusCode(
-                StatusCode::try_from(*status_code).unwrap()
-            )));
+        for err in &[
+            Error::TooManyRequests {
+                retry_after_delay_seconds: None,
+            },
+            Error::ServiceUnavailable {
+                retry_after_delay_seconds: None,
+            },
+        ] {
+            assert!((policy.predicate)(err));
         }
-        for status_code in &[200, 401, 502, 504] {
-            assert!(!(policy.predicate)(&Error::StatusCode(
-                StatusCode::try_from(*status_code).unwrap()
-            )));
+        for err in &[
+            Error::BadGateway,
+            Error::GatewayTimeout,
+            Error::ConnectionError,
+            Error::TimeoutError,
+            Error::Other(Box::new(std::io::Error::from(std::io::ErrorKind::TimedOut))),
+        ] {
+            assert!(!(policy.predicate)(err));
         }
-        assert!((policy.predicate)(&Error::ConnectionError));
-        assert!((policy.predicate)(&Error::TimeoutError));
         assert_eq!(policy.max_retries, 5);
         assert_eq!(policy.backoff, Backoff::default());
     }

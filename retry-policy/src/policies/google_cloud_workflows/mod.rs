@@ -5,7 +5,6 @@ use core::fmt;
 
 use retry_backoff::backoffs::google_cloud_workflows::Backoff;
 
-#[cfg(feature = "http")]
 pub mod http;
 
 //

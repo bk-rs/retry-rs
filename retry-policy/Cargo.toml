@@ -16,16 +16,10 @@ readme = "README.md"
 all-features = true
 
 [features]
-default = [
-    "_priv_test_http",
-]
-
-_priv_test_http = ["http"]
+default = []
 
 [dependencies]
 retry-backoff = { version = "0.0", default-features = false, path = "../retry-backoff" }
-
-http = { version = "0.2", default-features = false, optional = true }
 
 [package.metadata.cargo-all-features]
 skip_optional_dependencies = true
