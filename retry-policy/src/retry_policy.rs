@@ -26,7 +26,7 @@ pub trait RetryPolicy<PParams> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum StopReason {
     MaxRetriesReached,
     PredicateIsNotAllowed,

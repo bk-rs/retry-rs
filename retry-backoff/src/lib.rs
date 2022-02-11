@@ -4,7 +4,7 @@
 extern crate alloc;
 
 //
-mod retry_backoff;
+pub mod retry_backoff;
 
 pub use self::retry_backoff::RetryBackoff;
 

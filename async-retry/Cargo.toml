@@ -14,10 +14,12 @@ readme = "README.md"
 
 [dependencies]
 async-sleep = { version = "0.1", default-features = false, features = ["timeout"] }
-retry-policy = { version = "0.0", default-features = false, features = ["std"], path = "../retry-policy" }
+retry-policy = { version = "0.0", default-features = false, path = "../retry-policy" }
 
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
+pin-project-lite = { version = "0.2" }
 
 [dev-dependencies]
 tokio = { version = "1.16", features = ["macros", "rt-multi-thread"] }
 async-sleep = { version = "0.1", features = ["impl_tokio"] }
+retry-policy = { version = "0.0", default-features = false, features = ["std"], path = "../retry-policy" }

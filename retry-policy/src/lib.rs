@@ -4,7 +4,11 @@
 extern crate alloc;
 
 //
-mod retry_policy;
+pub use retry_backoff;
+pub use retry_predicate;
+
+//
+pub mod retry_policy;
 
 pub use self::retry_policy::RetryPolicy;
 

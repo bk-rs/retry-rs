@@ -4,7 +4,7 @@
 extern crate alloc;
 
 //
-mod retry_predicate;
+pub mod retry_predicate;
 
 pub use self::retry_predicate::RetryPredicate;
 
