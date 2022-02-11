@@ -12,7 +12,7 @@ use futures_util::{future::FusedFuture, FutureExt as _};
 use pin_project_lite::pin_project;
 use retry_policy::RetryPolicy;
 
-use crate::error::{Error, ErrorKind};
+use crate::error::Error;
 
 //
 pin_project! {
@@ -20,19 +20,38 @@ pin_project! {
     pub struct Retry<POL, PParams, F, Fut, T, E, SLEEP> {
         policy: POL,
         future_repeater: F,
+        //
         state: State,
         attempts: usize,
+        errors: Option<Vec<E>>,
+        //
         phantom: PhantomData<(PParams, Fut, T, E, SLEEP)>,
+    }
+}
+
+impl<POL, PParams, F, Fut, T, E, SLEEP> Retry<POL, PParams, F, Fut, T, E, SLEEP> {
+    fn new(policy: POL, future_repeater: F) -> Self {
+        Self {
+            policy,
+            future_repeater,
+            state: State::default(),
+            attempts: 0,
+            errors: Some(vec![]),
+            phantom: PhantomData,
+        }
     }
 }
 
 enum State {
     Pending,
     Sleep(Pin<Box<dyn Future<Output = ()>>>),
-    #[allow(dead_code)]
     Done,
 }
-
+impl Default for State {
+    fn default() -> Self {
+        Self::Pending
+    }
+}
 impl fmt::Debug for State {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -54,13 +73,7 @@ where
     Fut: Future<Output = Result<T, E>> + Unpin,
     SLEEP: Sleepble,
 {
-    Retry {
-        policy,
-        future_repeater,
-        state: State::Pending,
-        attempts: 0,
-        phantom: PhantomData,
-    }
+    Retry::new(policy, future_repeater)
 }
 
 impl<POL, PParams, F, Fut, T, E, SLEEP> FusedFuture for Retry<POL, PParams, F, Fut, T, E, SLEEP>
@@ -89,40 +102,62 @@ where
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
 
-        match this.state {
-            State::Pending => {
-                let mut future = (this.future_repeater)();
+        loop {
+            match this.state {
+                State::Pending => {
+                    let mut future = (this.future_repeater)();
 
-                match future.poll_unpin(cx) {
-                    Poll::Ready(Ok(x)) => Poll::Ready(Ok(x)),
-                    Poll::Ready(Err(err)) => {
-                        let params = PParams::from(&err);
+                    match future.poll_unpin(cx) {
+                        Poll::Ready(Ok(x)) => {
+                            //
+                            *this.state = State::Done;
+                            *this.attempts = 0;
+                            *this.errors = Some(vec![]);
 
-                        match this.policy.next_step(&params, *this.attempts) {
-                            ControlFlow::Continue(dur) => {
-                                *this.attempts += 1;
-
-                                *this.state = State::Sleep(Box::pin(sleep::<SLEEP>(dur)));
-
-                                Poll::Pending
-                            }
-                            ControlFlow::Break(stop_reason) => Poll::Ready(Err(Error::new(
-                                ErrorKind::RetryPolicyStopReason(stop_reason),
-                                err,
-                            ))),
+                            break Poll::Ready(Ok(x));
                         }
+                        Poll::Ready(Err(err)) => {
+                            let params = PParams::from(&err);
+
+                            //
+                            *this.attempts += 1;
+                            if let Some(errors) = this.errors.as_mut() {
+                                errors.push(err)
+                            }
+
+                            match this.policy.next_step(&params, *this.attempts) {
+                                ControlFlow::Continue(dur) => {
+                                    //
+                                    *this.state = State::Sleep(Box::pin(sleep::<SLEEP>(dur)));
+
+                                    break Poll::Pending;
+                                }
+                                ControlFlow::Break(stop_reason) => {
+                                    let errors = this.errors.take().expect("unreachable!()");
+
+                                    //
+                                    *this.state = State::Done;
+                                    *this.attempts = 0;
+                                    *this.errors = Some(vec![]);
+
+                                    break Poll::Ready(Err(Error::new(stop_reason, errors)));
+                                }
+                            }
+                        }
+                        Poll::Pending => break Poll::Pending,
                     }
-                    Poll::Pending => Poll::Pending,
                 }
+                State::Sleep(future) => match future.poll_unpin(cx) {
+                    Poll::Ready(_) => {
+                        //
+                        *this.state = State::Pending;
+
+                        continue;
+                    }
+                    Poll::Pending => break Poll::Pending,
+                },
+                State::Done => panic!("cannot poll Select twice"),
             }
-            State::Sleep(future) => match future.poll_unpin(cx) {
-                Poll::Ready(_) => {
-                    *this.state = State::Pending;
-                    Poll::Pending
-                }
-                Poll::Pending => Poll::Pending,
-            },
-            State::Done => panic!("cannot poll Select twice"),
         }
     }
 }

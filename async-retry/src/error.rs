@@ -4,20 +4,27 @@ use retry_policy::retry_policy::StopReason as RetryPolicyStopReason;
 
 //
 pub struct Error<T> {
-    pub kind: ErrorKind,
-    pub last: T,
+    pub stop_reason: RetryPolicyStopReason,
+    errors: Vec<T>,
 }
 
 impl<T> Error<T> {
-    pub fn new(kind: ErrorKind, last: T) -> Self {
-        Self { kind, last }
-    }
-}
+    pub(crate) fn new(stop_reason: RetryPolicyStopReason, errors: Vec<T>) -> Self {
+        assert!(!errors.is_empty());
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum ErrorKind {
-    Original,
-    RetryPolicyStopReason(RetryPolicyStopReason),
+        Self {
+            stop_reason,
+            errors,
+        }
+    }
+
+    pub fn last_error(mut self) -> T {
+        self.errors.pop().expect("unreachable!()")
+    }
+
+    pub fn errors(self) -> Vec<T> {
+        self.errors
+    }
 }
 
 impl<T> fmt::Debug for Error<T>
@@ -26,8 +33,8 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Error")
-            .field("kind", &self.kind)
-            .field("last", &self.last)
+            .field("stop_reason", &self.stop_reason)
+            .field("errors", &self.errors)
             .finish()
     }
 }
