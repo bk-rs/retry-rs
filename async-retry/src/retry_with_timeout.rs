@@ -1,6 +1,5 @@
 use alloc::boxed::Box;
-
-use core::{fmt, future::Future, time::Duration};
+use core::{convert::Infallible, fmt, future::Future, time::Duration};
 
 use async_sleep::{
     timeout::{timeout, Error as TimeoutError},
@@ -35,6 +34,30 @@ where
                         Err(err) => Err(ErrorWrapper::Inner(err)),
                     },
                 ),
+            )
+        }),
+    )
+}
+
+//
+pub fn retry_with_timeout_for_unresult<SLEEP, POL, F, Fut, T>(
+    policy: POL,
+    future_repeater: F,
+    every_attempt_timeout_dur: Duration,
+) -> Retry<SLEEP, POL, T, ErrorWrapper<Infallible>>
+where
+    SLEEP: Sleepble + 'static,
+    POL: RetryPolicy<ErrorWrapper<Infallible>>,
+    F: Fn() -> Fut + 'static,
+    Fut: Future<Output = T> + 'static,
+{
+    Retry::<SLEEP, _, _, _>::new(
+        policy,
+        Box::new(move || {
+            let fut = future_repeater();
+            Box::pin(
+                timeout::<SLEEP, _>(every_attempt_timeout_dur, Box::pin(fut))
+                    .map_ok_or_else(|err| Err(ErrorWrapper::Timeout(err)), |x| Ok(x)),
             )
         }),
     )
@@ -140,8 +163,10 @@ mod tests {
     use async_sleep::impl_tokio::Sleep;
     use once_cell::sync::Lazy;
     use retry_policy::{
-        policies::SimplePolicy, retry_backoff::backoffs::FnBackoff,
-        retry_predicate::predicates::FnPredicate, StopReason,
+        policies::SimplePolicy,
+        retry_backoff::backoffs::FnBackoff,
+        retry_predicate::predicates::{AlwaysPredicate, FnPredicate},
+        StopReason,
     };
 
     #[tokio::test]
@@ -214,6 +239,49 @@ mod tests {
         {
             let elapsed_dur = now.elapsed();
             assert!(elapsed_dur.as_millis() >= 250 && elapsed_dur.as_millis() <= 260);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_retry_with_timeout_for_unresult() {
+        async fn f(n: usize) {
+            #[allow(clippy::single_match)]
+            match n {
+                0 => tokio::time::sleep(tokio::time::Duration::from_millis(100)).await,
+                _ => {}
+            }
+        }
+
+        //
+        static N: Lazy<AtomicUsize> = Lazy::new(|| AtomicUsize::new(0));
+
+        let policy = SimplePolicy::new(
+            PredicateWrapper::new(AlwaysPredicate),
+            3,
+            FnBackoff::from(|_| Duration::from_millis(100)),
+        );
+
+        //
+        #[cfg(feature = "std")]
+        let now = std::time::Instant::now();
+
+        match retry_with_timeout_for_unresult::<Sleep, _, _, _, ()>(
+            policy,
+            || f(N.fetch_add(1, Ordering::SeqCst)),
+            Duration::from_millis(50),
+        )
+        .await
+        {
+            Ok(_) => {}
+            Err(err) => {
+                panic!("{:?}", err)
+            }
+        }
+
+        #[cfg(feature = "std")]
+        {
+            let elapsed_dur = now.elapsed();
+            assert!(elapsed_dur.as_millis() >= 150 && elapsed_dur.as_millis() <= 155);
         }
     }
 }
