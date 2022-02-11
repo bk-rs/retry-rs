@@ -221,7 +221,7 @@ mod tests {
         #[cfg(feature = "std")]
         {
             let elapsed_dur = now.elapsed();
-            assert!(elapsed_dur.as_millis() >= 250 && elapsed_dur.as_millis() <= 255);
+            assert!(elapsed_dur.as_millis() >= 250 && elapsed_dur.as_millis() <= 260);
         }
     }
 }

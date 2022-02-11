@@ -106,10 +106,10 @@ where
         loop {
             match this.state {
                 State::Pending => {
-                    let future = (this.future_repeater)();
+                    let future = Box::pin((this.future_repeater)());
 
                     //
-                    *this.state = State::Fut(Box::pin(future));
+                    *this.state = State::Fut(future);
 
                     continue;
                 }
@@ -172,6 +172,26 @@ where
     }
 }
 
+//
+impl<SLEEP, POL, T, E> FusedFuture
+    for Retry<
+        SLEEP,
+        POL,
+        Box<dyn FnMut() -> Pin<Box<dyn Future<Output = Result<T, E>>>>>,
+        Box<dyn Future<Output = Result<T, E>>>,
+        T,
+        E,
+    >
+where
+    SLEEP: Sleepble + 'static,
+    POL: RetryPolicy<E>,
+{
+    fn is_terminated(&self) -> bool {
+        matches!(self.state, State::Done)
+    }
+}
+
+//
 impl<SLEEP, POL, T, E> Future
     for Retry<
         SLEEP,
