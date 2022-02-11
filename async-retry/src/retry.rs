@@ -8,7 +8,7 @@ use core::{
 };
 
 use async_sleep::{sleep, Sleepble};
-use futures_util::{future::FusedFuture, FutureExt as _};
+use futures_util::{future::FusedFuture, pin_mut, FutureExt as _};
 use pin_project_lite::pin_project;
 use retry_policy::RetryPolicy;
 
@@ -34,23 +34,21 @@ impl<POL, PParams, F, Fut, T, E, SLEEP> Retry<POL, PParams, F, Fut, T, E, SLEEP>
         Self {
             policy,
             future_repeater,
-            state: State::default(),
+            //
+            state: State::Pending,
             attempts: 0,
             errors: Some(vec![]),
+            //
             phantom: PhantomData,
         }
     }
 }
 
+//
 enum State {
     Pending,
     Sleep(Pin<Box<dyn Future<Output = ()>>>),
     Done,
-}
-impl Default for State {
-    fn default() -> Self {
-        Self::Pending
-    }
 }
 impl fmt::Debug for State {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -62,6 +60,7 @@ impl fmt::Debug for State {
     }
 }
 
+//
 pub fn retry<POL, PParams, F, Fut, T, E, SLEEP>(
     policy: POL,
     future_repeater: F,
@@ -70,18 +69,19 @@ where
     POL: RetryPolicy<PParams>,
     PParams: for<'a> From<&'a E>,
     F: FnMut() -> Fut,
-    Fut: Future<Output = Result<T, E>> + Unpin,
+    Fut: Future<Output = Result<T, E>>,
     SLEEP: Sleepble,
 {
     Retry::new(policy, future_repeater)
 }
 
+//
 impl<POL, PParams, F, Fut, T, E, SLEEP> FusedFuture for Retry<POL, PParams, F, Fut, T, E, SLEEP>
 where
     POL: RetryPolicy<PParams>,
     PParams: for<'a> From<&'a E>,
     F: FnMut() -> Fut,
-    Fut: Future<Output = Result<T, E>> + Unpin,
+    Fut: Future<Output = Result<T, E>>,
     SLEEP: Sleepble + 'static,
 {
     fn is_terminated(&self) -> bool {
@@ -89,12 +89,13 @@ where
     }
 }
 
+//
 impl<POL, PParams, F, Fut, T, E, SLEEP> Future for Retry<POL, PParams, F, Fut, T, E, SLEEP>
 where
     POL: RetryPolicy<PParams>,
     PParams: for<'a> From<&'a E>,
     F: FnMut() -> Fut,
-    Fut: Future<Output = Result<T, E>> + Unpin,
+    Fut: Future<Output = Result<T, E>>,
     SLEEP: Sleepble + 'static,
 {
     type Output = Result<T, Error<E>>;
@@ -105,9 +106,10 @@ where
         loop {
             match this.state {
                 State::Pending => {
-                    let mut future = (this.future_repeater)();
+                    let future = (this.future_repeater)();
+                    pin_mut!(future);
 
-                    match future.poll_unpin(cx) {
+                    match future.poll(cx) {
                         Poll::Ready(Ok(x)) => {
                             //
                             *this.state = State::Done;
