@@ -9,7 +9,7 @@ use core::{
 };
 
 use async_sleep::{sleep, Sleepble};
-use futures_util::{future::FusedFuture, pin_mut, FutureExt as _};
+use futures_util::{future::FusedFuture, FutureExt as _};
 use pin_project_lite::pin_project;
 use retry_policy::RetryPolicy;
 
@@ -22,7 +22,7 @@ pin_project! {
         policy: POL,
         future_repeater: F,
         //
-        state: State,
+        state: State<T, E>,
         attempts: usize,
         errors: Option<Vec<E>>,
         //
@@ -46,15 +46,17 @@ impl<SLEEP, POL, F, Fut, T, E> Retry<SLEEP, POL, F, Fut, T, E> {
 }
 
 //
-enum State {
+enum State<T, E> {
     Pending,
+    Fut(Pin<Box<dyn Future<Output = Result<T, E>>>>),
     Sleep(Pin<Box<dyn Future<Output = ()>>>),
     Done,
 }
-impl fmt::Debug for State {
+impl<T, E> fmt::Debug for State<T, E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             State::Pending => write!(f, "Pending"),
+            State::Fut(_) => write!(f, "Fut"),
             State::Sleep(_) => write!(f, "Sleep"),
             State::Done => write!(f, "Done"),
         }
@@ -70,7 +72,7 @@ where
     SLEEP: Sleepble + 'static,
     POL: RetryPolicy<E>,
     F: FnMut() -> Fut,
-    Fut: Future<Output = Result<T, E>>,
+    Fut: Future<Output = Result<T, E>> + 'static,
 {
     Retry::new(policy, future_repeater)
 }
@@ -81,7 +83,7 @@ where
     SLEEP: Sleepble + 'static,
     POL: RetryPolicy<E>,
     F: FnMut() -> Fut,
-    Fut: Future<Output = Result<T, E>>,
+    Fut: Future<Output = Result<T, E>> + 'static,
 {
     fn is_terminated(&self) -> bool {
         matches!(self.state, State::Done)
@@ -94,7 +96,7 @@ where
     SLEEP: Sleepble + 'static,
     POL: RetryPolicy<E>,
     F: FnMut() -> Fut,
-    Fut: Future<Output = Result<T, E>>,
+    Fut: Future<Output = Result<T, E>> + 'static,
 {
     type Output = Result<T, Error<E>>;
 
@@ -105,9 +107,14 @@ where
             match this.state {
                 State::Pending => {
                     let future = (this.future_repeater)();
-                    pin_mut!(future);
 
-                    match future.poll(cx) {
+                    //
+                    *this.state = State::Fut(Box::pin(future));
+
+                    continue;
+                }
+                State::Fut(future) => {
+                    match future.poll_unpin(cx) {
                         Poll::Ready(Ok(x)) => {
                             //
                             *this.state = State::Done;
@@ -188,9 +195,13 @@ where
                 State::Pending => {
                     let future = (this.future_repeater)();
 
-                    pin_mut!(future);
+                    //
+                    *this.state = State::Fut(future);
 
-                    match future.poll(cx) {
+                    continue;
+                }
+                State::Fut(future) => {
+                    match future.poll_unpin(cx) {
                         Poll::Ready(Ok(x)) => {
                             //
                             *this.state = State::Done;

@@ -12,6 +12,7 @@ use retry_policy::{retry_predicate::RetryPredicate, RetryPolicy};
 use crate::retry::Retry;
 
 //
+#[allow(clippy::type_complexity)]
 pub fn retry_with_timeout<SLEEP, POL, F, Fut, T, E>(
     policy: POL,
     future_repeater: F,
@@ -156,6 +157,7 @@ mod tests {
         #[derive(Debug, PartialEq)]
         struct FError(usize);
         async fn f(n: usize) -> Result<(), FError> {
+            #[allow(clippy::single_match)]
             match n {
                 1 => tokio::time::sleep(tokio::time::Duration::from_millis(100)).await,
                 _ => {}
@@ -168,7 +170,7 @@ mod tests {
 
         let policy = SimplePolicy::new(
             PredicateWrapper::new(FnPredicate::from(|FError(n): &FError| {
-                vec![0, 1, 2].contains(n)
+                vec![0, 1].contains(n)
             })),
             3,
             FnBackoff::from(|_| Duration::from_millis(100)),
@@ -188,9 +190,30 @@ mod tests {
             Ok(_) => panic!(""),
             Err(err) => {
                 assert_eq!(&err.stop_reason, &StopReason::PredicateFailed);
-                for err in err.errors() {
+                for (i, err) in err.errors().iter().enumerate() {
                     #[cfg(feature = "std")]
-                    println!("{:?}", err);
+                    println!("{} {:?}", i, err);
+                    match i {
+                        0 => match err {
+                            ErrorWrapper::Inner(FError(n)) => {
+                                assert_eq!(*n, 0)
+                            }
+                            err => panic!("{} {:?}", i, err),
+                        },
+                        1 => match err {
+                            ErrorWrapper::Timeout(TimeoutError::Timeout(dur)) => {
+                                assert_eq!(*dur, Duration::from_millis(50));
+                            }
+                            err => panic!("{} {:?}", i, err),
+                        },
+                        2 => match err {
+                            ErrorWrapper::Inner(FError(n)) => {
+                                assert_eq!(*n, 2)
+                            }
+                            err => panic!("{} {:?}", i, err),
+                        },
+                        n => panic!("{} {:?}", n, err),
+                    }
                 }
             }
         }
@@ -198,8 +221,7 @@ mod tests {
         #[cfg(feature = "std")]
         {
             let elapsed_dur = now.elapsed();
-            println!("{:?}", elapsed_dur);
-            assert!(elapsed_dur.as_millis() >= 100 && elapsed_dur.as_millis() <= 101);
+            assert!(elapsed_dur.as_millis() >= 250 && elapsed_dur.as_millis() <= 255);
         }
     }
 }
