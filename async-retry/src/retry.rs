@@ -17,7 +17,7 @@ use crate::error::Error;
 //
 pin_project! {
     #[derive(Debug)]
-    pub struct Retry<POL, PParams, F, Fut, T, E, SLEEP> {
+    pub struct Retry<SLEEP,POL, F, Fut, T, E> {
         policy: POL,
         future_repeater: F,
         //
@@ -25,11 +25,11 @@ pin_project! {
         attempts: usize,
         errors: Option<Vec<E>>,
         //
-        phantom: PhantomData<(PParams, Fut, T, E, SLEEP)>,
+        phantom: PhantomData<(SLEEP,Fut, T, E)>,
     }
 }
 
-impl<POL, PParams, F, Fut, T, E, SLEEP> Retry<POL, PParams, F, Fut, T, E, SLEEP> {
+impl<SLEEP, POL, F, Fut, T, E> Retry<SLEEP, POL, F, Fut, T, E> {
     fn new(policy: POL, future_repeater: F) -> Self {
         Self {
             policy,
@@ -61,28 +61,26 @@ impl fmt::Debug for State {
 }
 
 //
-pub fn retry<POL, PParams, F, Fut, T, E, SLEEP>(
+pub fn retry<SLEEP, POL, F, Fut, T, E>(
     policy: POL,
     future_repeater: F,
-) -> Retry<POL, PParams, F, Fut, T, E, SLEEP>
+) -> Retry<SLEEP, POL, F, Fut, T, E>
 where
-    POL: RetryPolicy<PParams>,
-    PParams: for<'a> From<&'a E>,
+    SLEEP: Sleepble + 'static,
+    POL: RetryPolicy<E>,
     F: FnMut() -> Fut,
     Fut: Future<Output = Result<T, E>>,
-    SLEEP: Sleepble,
 {
     Retry::new(policy, future_repeater)
 }
 
 //
-impl<POL, PParams, F, Fut, T, E, SLEEP> FusedFuture for Retry<POL, PParams, F, Fut, T, E, SLEEP>
+impl<SLEEP, POL, F, Fut, T, E> FusedFuture for Retry<SLEEP, POL, F, Fut, T, E>
 where
-    POL: RetryPolicy<PParams>,
-    PParams: for<'a> From<&'a E>,
+    SLEEP: Sleepble + 'static,
+    POL: RetryPolicy<E>,
     F: FnMut() -> Fut,
     Fut: Future<Output = Result<T, E>>,
-    SLEEP: Sleepble + 'static,
 {
     fn is_terminated(&self) -> bool {
         matches!(self.state, State::Done)
@@ -90,13 +88,12 @@ where
 }
 
 //
-impl<POL, PParams, F, Fut, T, E, SLEEP> Future for Retry<POL, PParams, F, Fut, T, E, SLEEP>
+impl<SLEEP, POL, F, Fut, T, E> Future for Retry<SLEEP, POL, F, Fut, T, E>
 where
-    POL: RetryPolicy<PParams>,
-    PParams: for<'a> From<&'a E>,
+    SLEEP: Sleepble + 'static,
+    POL: RetryPolicy<E>,
     F: FnMut() -> Fut,
     Fut: Future<Output = Result<T, E>>,
-    SLEEP: Sleepble + 'static,
 {
     type Output = Result<T, Error<E>>;
 
@@ -119,15 +116,17 @@ where
                             break Poll::Ready(Ok(x));
                         }
                         Poll::Ready(Err(err)) => {
-                            let params = PParams::from(&err);
-
                             //
                             *this.attempts += 1;
+
+                            let ret = this.policy.next_step(&err, *this.attempts);
+
+                            //
                             if let Some(errors) = this.errors.as_mut() {
                                 errors.push(err)
                             }
 
-                            match this.policy.next_step(&params, *this.attempts) {
+                            match ret {
                                 ControlFlow::Continue(dur) => {
                                     //
                                     *this.state = State::Sleep(Box::pin(sleep::<SLEEP>(dur)));
@@ -161,5 +160,48 @@ where
                 State::Done => panic!("cannot poll Select twice"),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use core::time::Duration;
+    use std::time::Instant;
+
+    use async_sleep::impl_tokio::Sleep;
+    use retry_policy::{
+        policies::SimplePolicy, retry_backoff::backoffs::FnBackoff,
+        retry_predicate::predicates::FnPredicate, StopReason,
+    };
+
+    #[tokio::test]
+    async fn test_sleep_until() {
+        #[derive(Debug, PartialEq)]
+        struct FError(usize);
+        async fn f(n: usize) -> Result<(), FError> {
+            Err(FError(n))
+        }
+
+        let policy = SimplePolicy::new(
+            FnPredicate::from(|_: &FError| true),
+            3,
+            FnBackoff::from(|_| Duration::from_millis(100)),
+        );
+
+        //
+        let now = Instant::now();
+
+        match retry::<Sleep, _, _, _, (), _>(policy, || f(0)).await {
+            Ok(_) => panic!(""),
+            Err(err) => {
+                assert_eq!(&err.stop_reason, &StopReason::MaxRetriesReached);
+                assert_eq!(err.errors(), &[FError(0), FError(0), FError(0)]);
+            }
+        }
+
+        let elapsed_dur = now.elapsed();
+        assert!(elapsed_dur.as_millis() >= 300 && elapsed_dur.as_millis() <= 305);
     }
 }

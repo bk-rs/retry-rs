@@ -1,6 +1,6 @@
 use core::fmt;
 
-use retry_policy::retry_policy::StopReason as RetryPolicyStopReason;
+use retry_policy::StopReason as RetryPolicyStopReason;
 
 //
 pub struct Error<T> {

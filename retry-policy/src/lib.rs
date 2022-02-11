@@ -8,9 +8,9 @@ pub use retry_backoff;
 pub use retry_predicate;
 
 //
-pub mod retry_policy;
+mod retry_policy;
 
-pub use self::retry_policy::RetryPolicy;
+pub use self::retry_policy::{RetryPolicy, StopReason};
 
 //
 pub mod policies;
