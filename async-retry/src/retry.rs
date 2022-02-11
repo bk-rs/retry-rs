@@ -16,22 +16,24 @@ use retry_policy::RetryPolicy;
 use crate::error::Error;
 
 //
+type RetryFutureRepeater<T, E> = Box<dyn FnMut() -> Pin<Box<dyn Future<Output = Result<T, E>>>>>;
+
+//
 pin_project! {
-    #[derive(Debug)]
-    pub struct Retry<SLEEP, POL, F, Fut, T, E> {
+    pub struct Retry<SLEEP, POL, T, E> {
         policy: POL,
-        future_repeater: F,
+        future_repeater: RetryFutureRepeater<T, E>,
         //
         state: State<T, E>,
         attempts: usize,
         errors: Option<Vec<E>>,
         //
-        phantom: PhantomData<(SLEEP, Fut, T, E)>,
+        phantom: PhantomData<(SLEEP, T, E)>,
     }
 }
 
-impl<SLEEP, POL, F, Fut, T, E> Retry<SLEEP, POL, F, Fut, T, E> {
-    pub(crate) fn new(policy: POL, future_repeater: F) -> Self {
+impl<SLEEP, POL, T, E> Retry<SLEEP, POL, T, E> {
+    pub(crate) fn new(policy: POL, future_repeater: RetryFutureRepeater<T, E>) -> Self {
         Self {
             policy,
             future_repeater,
@@ -64,124 +66,18 @@ impl<T, E> fmt::Debug for State<T, E> {
 }
 
 //
-pub fn retry<SLEEP, POL, F, Fut, T, E>(
-    policy: POL,
-    future_repeater: F,
-) -> Retry<SLEEP, POL, F, Fut, T, E>
+pub fn retry<SLEEP, POL, F, Fut, T, E>(policy: POL, future_repeater: F) -> Retry<SLEEP, POL, T, E>
 where
     SLEEP: Sleepble + 'static,
     POL: RetryPolicy<E>,
-    F: FnMut() -> Fut,
+    F: Fn() -> Fut + 'static,
     Fut: Future<Output = Result<T, E>> + 'static,
 {
-    Retry::new(policy, future_repeater)
+    Retry::new(policy, Box::new(move || Box::pin(future_repeater())))
 }
 
 //
-impl<SLEEP, POL, F, Fut, T, E> FusedFuture for Retry<SLEEP, POL, F, Fut, T, E>
-where
-    SLEEP: Sleepble + 'static,
-    POL: RetryPolicy<E>,
-    F: FnMut() -> Fut,
-    Fut: Future<Output = Result<T, E>> + 'static,
-{
-    fn is_terminated(&self) -> bool {
-        matches!(self.state, State::Done)
-    }
-}
-
-//
-impl<SLEEP, POL, F, Fut, T, E> Future for Retry<SLEEP, POL, F, Fut, T, E>
-where
-    SLEEP: Sleepble + 'static,
-    POL: RetryPolicy<E>,
-    F: FnMut() -> Fut,
-    Fut: Future<Output = Result<T, E>> + 'static,
-{
-    type Output = Result<T, Error<E>>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-
-        loop {
-            match this.state {
-                State::Pending => {
-                    let future = Box::pin((this.future_repeater)());
-
-                    //
-                    *this.state = State::Fut(future);
-
-                    continue;
-                }
-                State::Fut(future) => {
-                    match future.poll_unpin(cx) {
-                        Poll::Ready(Ok(x)) => {
-                            //
-                            *this.state = State::Done;
-                            *this.attempts = 0;
-                            *this.errors = Some(Vec::new());
-
-                            break Poll::Ready(Ok(x));
-                        }
-                        Poll::Ready(Err(err)) => {
-                            //
-                            *this.attempts += 1;
-
-                            //
-                            let ret = this.policy.next_step(&err, *this.attempts);
-
-                            //
-                            if let Some(errors) = this.errors.as_mut() {
-                                errors.push(err)
-                            }
-
-                            match ret {
-                                ControlFlow::Continue(dur) => {
-                                    //
-                                    *this.state = State::Sleep(Box::pin(sleep::<SLEEP>(dur)));
-
-                                    continue;
-                                }
-                                ControlFlow::Break(stop_reason) => {
-                                    let errors = this.errors.take().expect("unreachable!()");
-
-                                    //
-                                    *this.state = State::Done;
-                                    *this.attempts = 0;
-                                    *this.errors = Some(Vec::new());
-
-                                    break Poll::Ready(Err(Error::new(stop_reason, errors)));
-                                }
-                            }
-                        }
-                        Poll::Pending => break Poll::Pending,
-                    }
-                }
-                State::Sleep(future) => match future.poll_unpin(cx) {
-                    Poll::Ready(_) => {
-                        //
-                        *this.state = State::Pending;
-
-                        continue;
-                    }
-                    Poll::Pending => break Poll::Pending,
-                },
-                State::Done => panic!("cannot poll Retry twice"),
-            }
-        }
-    }
-}
-
-//
-impl<SLEEP, POL, T, E> FusedFuture
-    for Retry<
-        SLEEP,
-        POL,
-        Box<dyn FnMut() -> Pin<Box<dyn Future<Output = Result<T, E>>>>>,
-        Box<dyn Future<Output = Result<T, E>>>,
-        T,
-        E,
-    >
+impl<SLEEP, POL, T, E> FusedFuture for Retry<SLEEP, POL, T, E>
 where
     SLEEP: Sleepble + 'static,
     POL: RetryPolicy<E>,
@@ -192,15 +88,7 @@ where
 }
 
 //
-impl<SLEEP, POL, T, E> Future
-    for Retry<
-        SLEEP,
-        POL,
-        Box<dyn FnMut() -> Pin<Box<dyn Future<Output = Result<T, E>>>>>,
-        Box<dyn Future<Output = Result<T, E>>>,
-        T,
-        E,
-    >
+impl<SLEEP, POL, T, E> Future for Retry<SLEEP, POL, T, E>
 where
     SLEEP: Sleepble + 'static,
     POL: RetryPolicy<E>,

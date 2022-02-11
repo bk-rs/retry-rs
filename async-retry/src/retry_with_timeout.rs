@@ -1,6 +1,6 @@
 use alloc::boxed::Box;
 
-use core::{fmt, future::Future, pin::Pin, time::Duration};
+use core::{fmt, future::Future, time::Duration};
 
 use async_sleep::{
     timeout::{timeout, Error as TimeoutError},
@@ -12,26 +12,18 @@ use retry_policy::{retry_predicate::RetryPredicate, RetryPolicy};
 use crate::retry::Retry;
 
 //
-#[allow(clippy::type_complexity)]
 pub fn retry_with_timeout<SLEEP, POL, F, Fut, T, E>(
     policy: POL,
     future_repeater: F,
     every_attempt_timeout_dur: Duration,
-) -> Retry<
-    SLEEP,
-    POL,
-    Box<dyn FnMut() -> Pin<Box<dyn Future<Output = Result<T, ErrorWrapper<E>>>>>>,
-    Box<dyn Future<Output = Result<T, ErrorWrapper<E>>>>,
-    T,
-    ErrorWrapper<E>,
->
+) -> Retry<SLEEP, POL, T, ErrorWrapper<E>>
 where
     SLEEP: Sleepble + 'static,
     POL: RetryPolicy<ErrorWrapper<E>>,
     F: Fn() -> Fut + 'static,
     Fut: Future<Output = Result<T, E>> + 'static,
 {
-    Retry::<SLEEP, _, _, _, T, _>::new(
+    Retry::<SLEEP, _, _, _>::new(
         policy,
         Box::new(move || {
             let fut = future_repeater();
