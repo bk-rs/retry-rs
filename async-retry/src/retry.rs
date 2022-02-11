@@ -131,7 +131,7 @@ where
                                     //
                                     *this.state = State::Sleep(Box::pin(sleep::<SLEEP>(dur)));
 
-                                    break Poll::Pending;
+                                    continue;
                                 }
                                 ControlFlow::Break(stop_reason) => {
                                     let errors = this.errors.take().expect("unreachable!()");
@@ -167,25 +167,32 @@ where
 mod tests {
     use super::*;
 
-    use core::time::Duration;
+    use core::{
+        sync::atomic::{AtomicUsize, Ordering},
+        time::Duration,
+    };
     use std::time::Instant;
 
     use async_sleep::impl_tokio::Sleep;
+    use once_cell::sync::Lazy;
     use retry_policy::{
-        policies::SimplePolicy, retry_backoff::backoffs::FnBackoff,
-        retry_predicate::predicates::FnPredicate, StopReason,
+        policies::SimplePolicy,
+        retry_backoff::backoffs::FnBackoff,
+        retry_predicate::predicates::{AlwaysPredicate, FnPredicate},
+        StopReason,
     };
 
     #[tokio::test]
-    async fn test_sleep_until() {
+    async fn test_retry_with_max_retries_reached() {
         #[derive(Debug, PartialEq)]
         struct FError(usize);
         async fn f(n: usize) -> Result<(), FError> {
             Err(FError(n))
         }
 
+        //
         let policy = SimplePolicy::new(
-            FnPredicate::from(|_: &FError| true),
+            AlwaysPredicate,
             3,
             FnBackoff::from(|_| Duration::from_millis(100)),
         );
@@ -197,11 +204,43 @@ mod tests {
             Ok(_) => panic!(""),
             Err(err) => {
                 assert_eq!(&err.stop_reason, &StopReason::MaxRetriesReached);
-                assert_eq!(err.errors(), &[FError(0), FError(0), FError(0)]);
+                assert_eq!(err.errors(), &[FError(0), FError(0), FError(0), FError(0)]);
             }
         }
 
         let elapsed_dur = now.elapsed();
         assert!(elapsed_dur.as_millis() >= 300 && elapsed_dur.as_millis() <= 305);
+    }
+
+    #[tokio::test]
+    async fn test_retry_with_predicate_failed() {
+        #[derive(Debug, PartialEq)]
+        struct FError(usize);
+        async fn f(n: usize) -> Result<(), FError> {
+            Err(FError(n))
+        }
+
+        //
+        static N: Lazy<AtomicUsize> = Lazy::new(|| AtomicUsize::new(0));
+
+        let policy = SimplePolicy::new(
+            FnPredicate::from(|FError(n): &FError| vec![0, 1].contains(n)),
+            3,
+            FnBackoff::from(|_| Duration::from_millis(100)),
+        );
+
+        //
+        let now = Instant::now();
+
+        match retry::<Sleep, _, _, _, (), _>(policy, || f(N.fetch_add(1, Ordering::SeqCst))).await {
+            Ok(_) => panic!(""),
+            Err(err) => {
+                assert_eq!(&err.stop_reason, &StopReason::PredicateFailed);
+                assert_eq!(err.errors(), &[FError(0), FError(1), FError(2)]);
+            }
+        }
+
+        let elapsed_dur = now.elapsed();
+        assert!(elapsed_dur.as_millis() >= 200 && elapsed_dur.as_millis() <= 205);
     }
 }

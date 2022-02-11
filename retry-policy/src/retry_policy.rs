@@ -15,7 +15,7 @@ pub trait RetryPolicy<PParams> {
         }
 
         if !self.predicate().test(params) {
-            return ControlFlow::Break(StopReason::PredicateIsNotAllowed);
+            return ControlFlow::Break(StopReason::PredicateFailed);
         }
 
         ControlFlow::Continue(self.backoff().delay(attempts))
@@ -29,7 +29,7 @@ pub trait RetryPolicy<PParams> {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum StopReason {
     MaxRetriesReached,
-    PredicateIsNotAllowed,
+    PredicateFailed,
 }
 
 //
