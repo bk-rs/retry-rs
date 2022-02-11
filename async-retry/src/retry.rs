@@ -17,7 +17,7 @@ use crate::error::Error;
 //
 pin_project! {
     #[derive(Debug)]
-    pub struct Retry<SLEEP,POL, F, Fut, T, E> {
+    pub struct Retry<SLEEP, POL, F, Fut, T, E> {
         policy: POL,
         future_repeater: F,
         //
@@ -25,7 +25,7 @@ pin_project! {
         attempts: usize,
         errors: Option<Vec<E>>,
         //
-        phantom: PhantomData<(SLEEP,Fut, T, E)>,
+        phantom: PhantomData<(SLEEP, Fut, T, E)>,
     }
 }
 
@@ -119,6 +119,7 @@ where
                             //
                             *this.attempts += 1;
 
+                            //
                             let ret = this.policy.next_step(&err, *this.attempts);
 
                             //
@@ -157,7 +158,7 @@ where
                     }
                     Poll::Pending => break Poll::Pending,
                 },
-                State::Done => panic!("cannot poll Select twice"),
+                State::Done => panic!("cannot poll Retry twice"),
             }
         }
     }
