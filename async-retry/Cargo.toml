@@ -27,7 +27,7 @@ futures-util = { version = "0.3", default-features = false }
 pin-project-lite = { version = "0.2", default-features = false }
 
 [dev-dependencies]
-tokio = { version = "1.16", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.16", features = ["macros", "rt-multi-thread", "time"] }
 once_cell = { version = "1.9" }
 
 async-sleep = { version = "0.1", features = ["impl_tokio"] }

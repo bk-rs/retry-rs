@@ -31,7 +31,7 @@ pin_project! {
 }
 
 impl<SLEEP, POL, F, Fut, T, E> Retry<SLEEP, POL, F, Fut, T, E> {
-    fn new(policy: POL, future_repeater: F) -> Self {
+    pub(crate) fn new(policy: POL, future_repeater: F) -> Self {
         Self {
             policy,
             future_repeater,
@@ -158,6 +158,93 @@ where
                         continue;
                     }
                     Poll::Pending => break Poll::Pending,
+                },
+                State::Done => panic!("cannot poll Retry twice"),
+            }
+        }
+    }
+}
+
+impl<SLEEP, POL, T, E> Future
+    for Retry<
+        SLEEP,
+        POL,
+        Box<dyn FnMut() -> Pin<Box<dyn Future<Output = Result<T, E>>>>>,
+        Box<dyn Future<Output = Result<T, E>>>,
+        T,
+        E,
+    >
+where
+    SLEEP: Sleepble + 'static,
+    POL: RetryPolicy<E>,
+{
+    type Output = Result<T, Error<E>>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+
+        loop {
+            match this.state {
+                State::Pending => {
+                    let future = (this.future_repeater)();
+
+                    pin_mut!(future);
+
+                    match future.poll(cx) {
+                        Poll::Ready(Ok(x)) => {
+                            //
+                            *this.state = State::Done;
+                            *this.attempts = 0;
+                            *this.errors = Some(Vec::new());
+
+                            break Poll::Ready(Ok(x));
+                        }
+                        Poll::Ready(Err(err)) => {
+                            //
+                            *this.attempts += 1;
+
+                            //
+                            let ret = this.policy.next_step(&err, *this.attempts);
+
+                            //
+                            if let Some(errors) = this.errors.as_mut() {
+                                errors.push(err)
+                            }
+
+                            match ret {
+                                ControlFlow::Continue(dur) => {
+                                    //
+                                    *this.state = State::Sleep(Box::pin(sleep::<SLEEP>(dur)));
+
+                                    continue;
+                                }
+                                ControlFlow::Break(stop_reason) => {
+                                    let errors = this.errors.take().expect("unreachable!()");
+
+                                    //
+                                    *this.state = State::Done;
+                                    *this.attempts = 0;
+                                    *this.errors = Some(Vec::new());
+
+                                    break Poll::Ready(Err(Error::new(stop_reason, errors)));
+                                }
+                            }
+                        }
+                        Poll::Pending => {
+                            break Poll::Pending;
+                        }
+                    }
+                }
+                State::Sleep(future) => match future.poll_unpin(cx) {
+                    Poll::Ready(_) => {
+                        //
+                        *this.state = State::Pending;
+
+                        continue;
+                    }
+                    Poll::Pending => {
+                        break Poll::Pending;
+                    }
                 },
                 State::Done => panic!("cannot poll Retry twice"),
             }

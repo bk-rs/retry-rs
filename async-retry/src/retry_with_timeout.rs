@@ -1,0 +1,205 @@
+use alloc::boxed::Box;
+
+use core::{fmt, future::Future, pin::Pin, time::Duration};
+
+use async_sleep::{
+    timeout::{timeout, Error as TimeoutError},
+    Sleepble,
+};
+use futures_util::TryFutureExt as _;
+use retry_policy::{retry_predicate::RetryPredicate, RetryPolicy};
+
+use crate::retry::Retry;
+
+//
+pub fn retry_with_timeout<SLEEP, POL, F, Fut, T, E>(
+    policy: POL,
+    future_repeater: F,
+    every_attempt_timeout_dur: Duration,
+) -> Retry<
+    SLEEP,
+    POL,
+    Box<dyn FnMut() -> Pin<Box<dyn Future<Output = Result<T, ErrorWrapper<E>>>>>>,
+    Box<dyn Future<Output = Result<T, ErrorWrapper<E>>>>,
+    T,
+    ErrorWrapper<E>,
+>
+where
+    SLEEP: Sleepble + 'static,
+    POL: RetryPolicy<ErrorWrapper<E>>,
+    F: Fn() -> Fut + 'static,
+    Fut: Future<Output = Result<T, E>> + 'static,
+{
+    Retry::<SLEEP, _, _, _, T, _>::new(
+        policy,
+        Box::new(move || {
+            let fut = future_repeater();
+            Box::pin(
+                timeout::<SLEEP, _>(every_attempt_timeout_dur, Box::pin(fut)).map_ok_or_else(
+                    |err| Err(ErrorWrapper::Timeout(err)),
+                    |ret| match ret {
+                        Ok(x) => Ok(x),
+                        Err(err) => Err(ErrorWrapper::Inner(err)),
+                    },
+                ),
+            )
+        }),
+    )
+}
+
+//
+//
+//
+pub enum ErrorWrapper<T> {
+    Inner(T),
+    Timeout(TimeoutError),
+}
+
+impl<T> fmt::Debug for ErrorWrapper<T>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ErrorWrapper::Inner(err) => f.debug_tuple("ErrorWrapper::Inner").field(err).finish(),
+            ErrorWrapper::Timeout(err) => {
+                f.debug_tuple("ErrorWrapper::Timeout").field(err).finish()
+            }
+        }
+    }
+}
+
+impl<T> fmt::Display for ErrorWrapper<T>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T> std::error::Error for ErrorWrapper<T> where T: fmt::Debug {}
+
+impl<T> ErrorWrapper<T> {
+    pub fn is_inner(&self) -> bool {
+        matches!(self, Self::Inner(_))
+    }
+
+    pub fn is_timeout(&self) -> bool {
+        matches!(self, Self::Timeout(_))
+    }
+
+    pub fn into_inner(self) -> Option<T> {
+        match self {
+            Self::Inner(x) => Some(x),
+            Self::Timeout(_) => None,
+        }
+    }
+}
+
+//
+//
+//
+pub struct PredicateWrapper<T> {
+    inner: T,
+}
+
+impl<T> fmt::Debug for PredicateWrapper<T>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PredicateWrapper")
+            .field("inner", &self.inner)
+            .finish()
+    }
+}
+
+impl<T> PredicateWrapper<T> {
+    pub fn new(inner: T) -> Self {
+        Self { inner }
+    }
+}
+
+impl<E, P> RetryPredicate<ErrorWrapper<E>> for PredicateWrapper<P>
+where
+    P: RetryPredicate<E>,
+{
+    fn test(&self, params: &ErrorWrapper<E>) -> bool {
+        match params {
+            ErrorWrapper::Inner(inner_params) => self.inner.test(inner_params),
+            ErrorWrapper::Timeout(_) => true,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use alloc::vec;
+    use core::{
+        sync::atomic::{AtomicUsize, Ordering},
+        time::Duration,
+    };
+
+    use async_sleep::impl_tokio::Sleep;
+    use once_cell::sync::Lazy;
+    use retry_policy::{
+        policies::SimplePolicy, retry_backoff::backoffs::FnBackoff,
+        retry_predicate::predicates::FnPredicate, StopReason,
+    };
+
+    #[tokio::test]
+    async fn test_retry_with_timeout() {
+        #[derive(Debug, PartialEq)]
+        struct FError(usize);
+        async fn f(n: usize) -> Result<(), FError> {
+            match n {
+                1 => tokio::time::sleep(tokio::time::Duration::from_millis(100)).await,
+                _ => {}
+            }
+            Err(FError(n))
+        }
+
+        //
+        static N: Lazy<AtomicUsize> = Lazy::new(|| AtomicUsize::new(0));
+
+        let policy = SimplePolicy::new(
+            PredicateWrapper::new(FnPredicate::from(|FError(n): &FError| {
+                vec![0, 1, 2].contains(n)
+            })),
+            3,
+            FnBackoff::from(|_| Duration::from_millis(100)),
+        );
+
+        //
+        #[cfg(feature = "std")]
+        let now = std::time::Instant::now();
+
+        match retry_with_timeout::<Sleep, _, _, _, (), _>(
+            policy,
+            || f(N.fetch_add(1, Ordering::SeqCst)),
+            Duration::from_millis(50),
+        )
+        .await
+        {
+            Ok(_) => panic!(""),
+            Err(err) => {
+                assert_eq!(&err.stop_reason, &StopReason::PredicateFailed);
+                for err in err.errors() {
+                    #[cfg(feature = "std")]
+                    println!("{:?}", err);
+                }
+            }
+        }
+
+        #[cfg(feature = "std")]
+        {
+            let elapsed_dur = now.elapsed();
+            println!("{:?}", elapsed_dur);
+            assert!(elapsed_dur.as_millis() >= 100 && elapsed_dur.as_millis() <= 101);
+        }
+    }
+}
