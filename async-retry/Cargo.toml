@@ -16,8 +16,8 @@ readme = "README.md"
 async-sleep = { version = "0.1", default-features = false, features = ["timeout"] }
 retry-policy = { version = "0.0", default-features = false, path = "../retry-policy" }
 
-futures-util = { version = "0.3", default-features = false, features = ["std"] }
-pin-project-lite = { version = "0.2" }
+futures-util = { version = "0.3", default-features = false }
+pin-project-lite = { version = "0.2", default-features = false }
 
 [dev-dependencies]
 tokio = { version = "1.16", features = ["macros", "rt-multi-thread"] }
