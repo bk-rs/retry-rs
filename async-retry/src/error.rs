@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use core::fmt;
 
 use retry_policy::StopReason as RetryPolicyStopReason;
@@ -48,4 +49,5 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<T> std::error::Error for Error<T> where T: fmt::Debug {}

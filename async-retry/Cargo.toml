@@ -12,6 +12,13 @@ keywords = []
 categories = []
 readme = "README.md"
 
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = ["std"]
+std = ["retry-policy/std", "futures-util/std"]
+
 [dependencies]
 async-sleep = { version = "0.1", default-features = false, features = ["timeout"] }
 retry-policy = { version = "0.0", default-features = false, path = "../retry-policy" }

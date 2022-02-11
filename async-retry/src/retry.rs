@@ -1,3 +1,4 @@
+use alloc::{boxed::Box, vec, vec::Vec};
 use core::{
     fmt,
     future::Future,
@@ -111,7 +112,7 @@ where
                             //
                             *this.state = State::Done;
                             *this.attempts = 0;
-                            *this.errors = Some(vec![]);
+                            *this.errors = Some(Vec::new());
 
                             break Poll::Ready(Ok(x));
                         }
@@ -140,7 +141,7 @@ where
                                     //
                                     *this.state = State::Done;
                                     *this.attempts = 0;
-                                    *this.errors = Some(vec![]);
+                                    *this.errors = Some(Vec::new());
 
                                     break Poll::Ready(Err(Error::new(stop_reason, errors)));
                                 }
@@ -172,7 +173,6 @@ mod tests {
         sync::atomic::{AtomicUsize, Ordering},
         time::Duration,
     };
-    use std::time::Instant;
 
     use async_sleep::impl_tokio::Sleep;
     use once_cell::sync::Lazy;
@@ -199,7 +199,8 @@ mod tests {
         );
 
         //
-        let now = Instant::now();
+        #[cfg(feature = "std")]
+        let now = std::time::Instant::now();
 
         match retry::<Sleep, _, _, _, (), _>(policy, || f(0)).await {
             Ok(_) => panic!(""),
@@ -209,8 +210,11 @@ mod tests {
             }
         }
 
-        let elapsed_dur = now.elapsed();
-        assert!(elapsed_dur.as_millis() >= 300 && elapsed_dur.as_millis() <= 305);
+        #[cfg(feature = "std")]
+        {
+            let elapsed_dur = now.elapsed();
+            assert!(elapsed_dur.as_millis() >= 300 && elapsed_dur.as_millis() <= 305);
+        }
     }
 
     #[tokio::test]
@@ -231,7 +235,8 @@ mod tests {
         );
 
         //
-        let now = Instant::now();
+        #[cfg(feature = "std")]
+        let now = std::time::Instant::now();
 
         match retry::<Sleep, _, _, _, (), _>(policy, || f(N.fetch_add(1, Ordering::SeqCst))).await {
             Ok(_) => panic!(""),
@@ -241,7 +246,10 @@ mod tests {
             }
         }
 
-        let elapsed_dur = now.elapsed();
-        assert!(elapsed_dur.as_millis() >= 200 && elapsed_dur.as_millis() <= 205);
+        #[cfg(feature = "std")]
+        {
+            let elapsed_dur = now.elapsed();
+            assert!(elapsed_dur.as_millis() >= 200 && elapsed_dur.as_millis() <= 205);
+        }
     }
 }
