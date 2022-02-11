@@ -176,7 +176,7 @@ mod tests {
         async fn f(n: usize) -> Result<(), FError> {
             #[allow(clippy::single_match)]
             match n {
-                1 => tokio::time::sleep(tokio::time::Duration::from_millis(100)).await,
+                1 => tokio::time::sleep(tokio::time::Duration::from_millis(80)).await,
                 _ => {}
             }
             Err(FError(n))
@@ -247,7 +247,7 @@ mod tests {
         async fn f(n: usize) {
             #[allow(clippy::single_match)]
             match n {
-                0 => tokio::time::sleep(tokio::time::Duration::from_millis(100)).await,
+                0 => tokio::time::sleep(tokio::time::Duration::from_millis(80)).await,
                 _ => {}
             }
         }
@@ -282,6 +282,59 @@ mod tests {
         {
             let elapsed_dur = now.elapsed();
             assert!(elapsed_dur.as_millis() >= 150 && elapsed_dur.as_millis() <= 155);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_retry_with_timeout_for_unresult_with_max_retries_reached() {
+        async fn f(_n: usize) {
+            tokio::time::sleep(tokio::time::Duration::from_millis(80)).await;
+        }
+
+        //
+        static N: Lazy<AtomicUsize> = Lazy::new(|| AtomicUsize::new(0));
+
+        let policy = SimplePolicy::new(
+            PredicateWrapper::new(AlwaysPredicate),
+            3,
+            FnBackoff::from(|_| Duration::from_millis(100)),
+        );
+
+        //
+        #[cfg(feature = "std")]
+        let now = std::time::Instant::now();
+
+        match retry_with_timeout_for_unresult::<Sleep, _, _, _, ()>(
+            policy,
+            || f(N.fetch_add(1, Ordering::SeqCst)),
+            Duration::from_millis(50),
+        )
+        .await
+        {
+            Ok(_) => panic!(""),
+            Err(err) => {
+                assert_eq!(&err.stop_reason, &StopReason::MaxRetriesReached);
+                for (i, err) in err.errors().iter().enumerate() {
+                    #[cfg(feature = "std")]
+                    println!("{} {:?}", i, err);
+                    match i {
+                        0 | 1 | 2 | 3 => match err {
+                            ErrorWrapper::Timeout(TimeoutError::Timeout(dur)) => {
+                                assert_eq!(*dur, Duration::from_millis(50));
+                            }
+                            err => panic!("{} {:?}", i, err),
+                        },
+
+                        n => panic!("{} {:?}", n, err),
+                    }
+                }
+            }
+        }
+
+        #[cfg(feature = "std")]
+        {
+            let elapsed_dur = now.elapsed();
+            assert!(elapsed_dur.as_millis() >= 500 && elapsed_dur.as_millis() <= 515);
         }
     }
 }
