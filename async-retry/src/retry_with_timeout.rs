@@ -14,7 +14,7 @@ use crate::retry::Retry;
 pub fn retry_with_timeout<SLEEP, POL, F, Fut, T, E>(
     policy: POL,
     future_repeater: F,
-    every_attempt_timeout_dur: Duration,
+    every_performance_timeout_dur: Duration,
 ) -> Retry<SLEEP, POL, T, ErrorWrapper<E>>
 where
     SLEEP: Sleepble + 'static,
@@ -27,7 +27,7 @@ where
         Box::new(move || {
             let fut = future_repeater();
             Box::pin(
-                timeout::<SLEEP, _>(every_attempt_timeout_dur, Box::pin(fut)).map_ok_or_else(
+                timeout::<SLEEP, _>(every_performance_timeout_dur, Box::pin(fut)).map_ok_or_else(
                     |err| Err(ErrorWrapper::Timeout(err)),
                     |ret| match ret {
                         Ok(x) => Ok(x),
@@ -43,7 +43,7 @@ where
 pub fn retry_with_timeout_for_unresult<SLEEP, POL, F, Fut, T>(
     policy: POL,
     future_repeater: F,
-    every_attempt_timeout_dur: Duration,
+    every_performance_timeout_dur: Duration,
 ) -> Retry<SLEEP, POL, T, ErrorWrapper<Infallible>>
 where
     SLEEP: Sleepble + 'static,
@@ -56,7 +56,7 @@ where
         Box::new(move || {
             let fut = future_repeater();
             Box::pin(
-                timeout::<SLEEP, _>(every_attempt_timeout_dur, Box::pin(fut))
+                timeout::<SLEEP, _>(every_performance_timeout_dur, Box::pin(fut))
                     .map_ok_or_else(|err| Err(ErrorWrapper::Timeout(err)), |x| Ok(x)),
             )
         }),
@@ -197,7 +197,7 @@ mod tests {
         #[cfg(feature = "std")]
         let now = std::time::Instant::now();
 
-        match retry_with_timeout::<Sleep, _, _, _, (), _>(
+        match retry_with_timeout::<Sleep, _, _, _, _, _>(
             policy,
             || f(N.fetch_add(1, Ordering::SeqCst)),
             Duration::from_millis(50),

@@ -128,6 +128,8 @@ where
                             //
                             if let Some(errors) = this.errors.as_mut() {
                                 errors.push(err)
+                            } else {
+                                unreachable!()
                             }
 
                             match ret {
@@ -208,7 +210,7 @@ mod tests {
         #[cfg(feature = "std")]
         let now = std::time::Instant::now();
 
-        match retry::<Sleep, _, _, _, (), _>(policy, || f(0)).await {
+        match retry::<Sleep, _, _, _, _, _>(policy, || f(0)).await {
             Ok(_) => panic!(""),
             Err(err) => {
                 assert_eq!(&err.stop_reason, &StopReason::MaxRetriesReached);
@@ -244,7 +246,7 @@ mod tests {
         #[cfg(feature = "std")]
         let now = std::time::Instant::now();
 
-        match retry::<Sleep, _, _, _, (), _>(policy, || f(N.fetch_add(1, Ordering::SeqCst))).await {
+        match retry::<Sleep, _, _, _, _, _>(policy, || f(N.fetch_add(1, Ordering::SeqCst))).await {
             Ok(_) => panic!(""),
             Err(err) => {
                 assert_eq!(&err.stop_reason, &StopReason::PredicateFailed);
