@@ -17,10 +17,10 @@ all-features = true
 
 [features]
 default = ["std"]
-std = ["retry-policy/std", "futures-util/std"]
+std = ["retry-policy/std"]
 
 [dependencies]
-async-sleep = { version = "0.1", default-features = false, features = ["timeout"] }
+async-sleep = { version = "0.2", default-features = false, features = ["timeout"] }
 retry-policy = { version = "0.0", default-features = false, path = "../retry-policy" }
 
 futures-util = { version = "0.3", default-features = false }
@@ -30,5 +30,5 @@ pin-project-lite = { version = "0.2", default-features = false }
 tokio = { version = "1.16", features = ["macros", "rt-multi-thread", "time"] }
 once_cell = { version = "1.9" }
 
-async-sleep = { version = "0.1", features = ["impl_tokio"] }
+async-sleep = { version = "0.2", features = ["impl_tokio"] }
 retry-policy = { version = "0.0", default-features = false, features = ["std"], path = "../retry-policy" }
