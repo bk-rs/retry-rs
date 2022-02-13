@@ -9,4 +9,4 @@ pub mod retry_with_timeout;
 
 pub use error::Error;
 pub use retry::retry;
-pub use retry_with_timeout::{retry_with_timeout, retry_with_timeout_for_unresult};
+pub use retry_with_timeout::{retry_with_timeout, retry_with_timeout_for_non_logic_error};

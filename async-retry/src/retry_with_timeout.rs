@@ -40,7 +40,7 @@ where
 }
 
 //
-pub fn retry_with_timeout_for_unresult<SLEEP, POL, F, Fut, T>(
+pub fn retry_with_timeout_for_non_logic_error<SLEEP, POL, F, Fut, T>(
     policy: POL,
     future_repeater: F,
     every_performance_timeout_dur: Duration,
@@ -265,7 +265,7 @@ mod tests {
         #[cfg(feature = "std")]
         let now = std::time::Instant::now();
 
-        match retry_with_timeout_for_unresult::<Sleep, _, _, _, ()>(
+        match retry_with_timeout_for_non_logic_error::<Sleep, _, _, _, ()>(
             policy,
             || f(N.fetch_add(1, Ordering::SeqCst)),
             Duration::from_millis(50),
@@ -286,7 +286,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_retry_with_timeout_for_unresult_with_max_retries_reached() {
+    async fn test_retry_with_timeout_for_non_logic_error_with_max_retries_reached() {
         async fn f(_n: usize) {
             tokio::time::sleep(tokio::time::Duration::from_millis(80)).await;
         }
@@ -304,7 +304,7 @@ mod tests {
         #[cfg(feature = "std")]
         let now = std::time::Instant::now();
 
-        match retry_with_timeout_for_unresult::<Sleep, _, _, _, ()>(
+        match retry_with_timeout_for_non_logic_error::<Sleep, _, _, _, ()>(
             policy,
             || f(N.fetch_add(1, Ordering::SeqCst)),
             Duration::from_millis(50),

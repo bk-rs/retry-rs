@@ -32,6 +32,18 @@ pin_project! {
     }
 }
 
+impl<SLEEP, POL, T, E> fmt::Debug for Retry<SLEEP, POL, T, E>
+where
+    POL: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Retry")
+            .field("policy", &self.policy)
+            .field("future_repeater", &"")
+            .finish()
+    }
+}
+
 impl<SLEEP, POL, T, E> Retry<SLEEP, POL, T, E> {
     pub(crate) fn new(policy: POL, future_repeater: RetryFutureRepeater<T, E>) -> Self {
         Self {
