@@ -337,4 +337,20 @@ mod tests {
             assert!(elapsed_dur.as_millis() >= 500 && elapsed_dur.as_millis() <= 515);
         }
     }
+
+    #[test]
+    fn test_error_wrapper() {
+        //
+        let inner_err = ErrorWrapper::Inner(());
+        assert!(inner_err.is_inner());
+        assert!(!inner_err.is_timeout());
+        assert_eq!(inner_err.into_inner(), Some(()));
+
+        //
+        let timeout_err =
+            ErrorWrapper::<()>::Timeout(TimeoutError::Timeout(Duration::from_secs(1)));
+        assert!(!timeout_err.is_inner());
+        assert!(timeout_err.is_timeout());
+        assert_eq!(timeout_err.into_inner(), None);
+    }
 }
