@@ -16,10 +16,23 @@ readme = "README.md"
 all-features = true
 
 [features]
-default = ["std"]
+default = ["std", "all_backoffs"]
 std = ["alloc"]
 alloc = []
 
 # backoffs
+all_backoffs = ["impl_exponential_backoff", "impl_backoff_rs"]
+
+impl_exponential_backoff = ["exponential-backoff", "std"]
+impl_backoff_rs = ["backoff-rs", "std"]
 
 [dependencies]
+exponential-backoff = { version = "1.1", default-features = false, optional = true }
+backoff-rs = { version = "0.1", default-features = false, optional = true }
+
+[package.metadata.cargo-all-features]
+skip_optional_dependencies = true
+skip_feature_sets = [
+    ["impl_exponential_backoff"],
+    ["impl_backoff_rs"],
+]
