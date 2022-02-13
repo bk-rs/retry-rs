@@ -31,14 +31,14 @@ impl<PParams> Policy<PParams> {
 
 #[cfg(feature = "std")]
 impl<PParams> crate::retry_policy::RetryPolicy<PParams> for Policy<PParams> {
-    fn backoff(&self) -> &dyn retry_backoff::RetryBackoff {
-        &self.backoff
-    }
     fn predicate(&self) -> &dyn RetryPredicate<PParams> {
         self.predicate.as_ref()
     }
     fn max_retries(&self) -> usize {
         self.max_retries
+    }
+    fn backoff(&self) -> &dyn retry_backoff::RetryBackoff {
+        &self.backoff
     }
 
     fn name(&self) -> &str {

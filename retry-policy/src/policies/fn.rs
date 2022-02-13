@@ -31,13 +31,13 @@ impl<PParams> RetryPolicy<PParams> for Policy<PParams>
 where
     PParams: Default,
 {
-    fn backoff(&self) -> &dyn RetryBackoff {
-        unreachable!()
-    }
     fn predicate(&self) -> &dyn RetryPredicate<PParams> {
         unreachable!()
     }
     fn max_retries(&self) -> usize {
+        unreachable!()
+    }
+    fn backoff(&self) -> &dyn RetryBackoff {
         unreachable!()
     }
 

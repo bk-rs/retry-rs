@@ -28,14 +28,14 @@ impl<PParams> Policy<PParams> {
 }
 
 impl<PParams> RetryPolicy<PParams> for Policy<PParams> {
-    fn backoff(&self) -> &dyn RetryBackoff {
-        self.backoff.as_ref()
-    }
     fn predicate(&self) -> &dyn RetryPredicate<PParams> {
         self.predicate.as_ref()
     }
     fn max_retries(&self) -> usize {
         self.max_retries
+    }
+    fn backoff(&self) -> &dyn RetryBackoff {
+        self.backoff.as_ref()
     }
 
     fn name(&self) -> &str {

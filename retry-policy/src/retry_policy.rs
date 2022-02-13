@@ -5,9 +5,9 @@ use retry_predicate::RetryPredicate;
 
 //
 pub trait RetryPolicy<PParams> {
-    fn backoff(&self) -> &dyn RetryBackoff;
     fn predicate(&self) -> &dyn RetryPredicate<PParams>;
     fn max_retries(&self) -> usize;
+    fn backoff(&self) -> &dyn RetryBackoff;
 
     fn next_step(&self, params: &PParams, attempts: usize) -> ControlFlow<StopReason, Duration> {
         if attempts > self.max_retries() {
