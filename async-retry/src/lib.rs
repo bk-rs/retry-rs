@@ -8,5 +8,5 @@ pub mod retry;
 pub mod retry_with_timeout;
 
 pub use error::Error;
-pub use retry::retry;
+pub use retry::{retry, Retry};
 pub use retry_with_timeout::{retry_with_timeout, retry_with_timeout_for_non_logic_error};
