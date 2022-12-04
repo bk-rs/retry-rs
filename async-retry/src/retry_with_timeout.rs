@@ -19,8 +19,8 @@ pub fn retry_with_timeout<SLEEP, POL, F, Fut, T, E>(
 where
     SLEEP: Sleepble + 'static,
     POL: RetryPolicy<ErrorWrapper<E>>,
-    F: Fn() -> Fut + 'static,
-    Fut: Future<Output = Result<T, E>> + 'static,
+    F: Fn() -> Fut + Send + 'static,
+    Fut: Future<Output = Result<T, E>> + Send + 'static,
 {
     Retry::<SLEEP, _, _, _>::new(
         policy,
@@ -48,8 +48,8 @@ pub fn retry_with_timeout_for_non_logic_error<SLEEP, POL, F, Fut, T>(
 where
     SLEEP: Sleepble + 'static,
     POL: RetryPolicy<ErrorWrapper<Infallible>>,
-    F: Fn() -> Fut + 'static,
-    Fut: Future<Output = T> + 'static,
+    F: Fn() -> Fut + Send + 'static,
+    Fut: Future<Output = T> + Send + 'static,
 {
     Retry::<SLEEP, _, _, _>::new(
         policy,
@@ -150,6 +150,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -194,7 +195,6 @@ mod tests {
         );
 
         //
-        #[cfg(feature = "std")]
         let now = std::time::Instant::now();
 
         match retry_with_timeout::<Sleep, _, _, _, _, _>(
@@ -208,7 +208,6 @@ mod tests {
             Err(err) => {
                 assert_eq!(&err.stop_reason, &StopReason::PredicateFailed);
                 for (i, err) in err.errors().iter().enumerate() {
-                    #[cfg(feature = "std")]
                     println!("{} {:?}", i, err);
                     match i {
                         0 => match err {
@@ -235,11 +234,8 @@ mod tests {
             }
         }
 
-        #[cfg(feature = "std")]
-        {
-            let elapsed_dur = now.elapsed();
-            assert!(elapsed_dur.as_millis() >= 250 && elapsed_dur.as_millis() <= 260);
-        }
+        let elapsed_dur = now.elapsed();
+        assert!(elapsed_dur.as_millis() >= 250 && elapsed_dur.as_millis() <= 260);
     }
 
     #[tokio::test]
@@ -262,7 +258,6 @@ mod tests {
         );
 
         //
-        #[cfg(feature = "std")]
         let now = std::time::Instant::now();
 
         match retry_with_timeout_for_non_logic_error::<Sleep, _, _, _, ()>(
@@ -278,11 +273,8 @@ mod tests {
             }
         }
 
-        #[cfg(feature = "std")]
-        {
-            let elapsed_dur = now.elapsed();
-            assert!(elapsed_dur.as_millis() >= 150 && elapsed_dur.as_millis() <= 155);
-        }
+        let elapsed_dur = now.elapsed();
+        assert!(elapsed_dur.as_millis() >= 150 && elapsed_dur.as_millis() <= 155);
     }
 
     #[tokio::test]
@@ -301,7 +293,6 @@ mod tests {
         );
 
         //
-        #[cfg(feature = "std")]
         let now = std::time::Instant::now();
 
         match retry_with_timeout_for_non_logic_error::<Sleep, _, _, _, ()>(
@@ -315,7 +306,6 @@ mod tests {
             Err(err) => {
                 assert_eq!(&err.stop_reason, &StopReason::MaxRetriesReached);
                 for (i, err) in err.errors().iter().enumerate() {
-                    #[cfg(feature = "std")]
                     println!("{} {:?}", i, err);
                     match i {
                         0 | 1 | 2 | 3 => match err {
@@ -331,12 +321,14 @@ mod tests {
             }
         }
 
-        #[cfg(feature = "std")]
-        {
-            let elapsed_dur = now.elapsed();
-            assert!(elapsed_dur.as_millis() >= 500 && elapsed_dur.as_millis() <= 515);
-        }
+        let elapsed_dur = now.elapsed();
+        assert!(elapsed_dur.as_millis() >= 500 && elapsed_dur.as_millis() <= 515);
     }
+}
+
+#[cfg(test)]
+mod tests_without_std {
+    use super::*;
 
     #[test]
     fn test_error_wrapper() {
