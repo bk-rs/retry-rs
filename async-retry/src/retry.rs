@@ -238,6 +238,42 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_retry_with_max_retries_reached_for_tokio_spawn() {
+        #[derive(Debug, PartialEq)]
+        struct FError(usize);
+        async fn f(n: usize) -> Result<(), FError> {
+            Err(FError(n))
+        }
+
+        //
+        let policy = SimplePolicy::new(
+            AlwaysPredicate,
+            3,
+            FnBackoff::from(|_| Duration::from_millis(100)),
+        );
+
+        //
+        tokio::spawn(async move {
+            #[cfg(feature = "std")]
+            let now = std::time::Instant::now();
+
+            match retry::<Sleep, _, _, _, _, _>(policy, || f(0)).await {
+                Ok(_) => panic!(""),
+                Err(err) => {
+                    assert_eq!(&err.stop_reason, &StopReason::MaxRetriesReached);
+                    assert_eq!(err.errors(), &[FError(0), FError(0), FError(0), FError(0)]);
+                }
+            }
+
+            #[cfg(feature = "std")]
+            {
+                let elapsed_dur = now.elapsed();
+                assert!(elapsed_dur.as_millis() >= 300 && elapsed_dur.as_millis() <= 305);
+            }
+        });
+    }
+
+    #[tokio::test]
     async fn test_retry_with_predicate_failed() {
         #[derive(Debug, PartialEq)]
         struct FError(usize);
