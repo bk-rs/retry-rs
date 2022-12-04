@@ -16,7 +16,8 @@ use retry_policy::RetryPolicy;
 use crate::error::Error;
 
 //
-type RetryFutureRepeater<T, E> = Box<dyn FnMut() -> Pin<Box<dyn Future<Output = Result<T, E>>>>>;
+type RetryFutureRepeater<T, E> =
+    Box<dyn FnMut() -> Pin<Box<dyn Future<Output = Result<T, E>> + Send>> + Send>;
 
 //
 pin_project! {
@@ -62,8 +63,8 @@ impl<SLEEP, POL, T, E> Retry<SLEEP, POL, T, E> {
 //
 enum State<T, E> {
     Pending,
-    Fut(Pin<Box<dyn Future<Output = Result<T, E>>>>),
-    Sleep(Pin<Box<dyn Future<Output = ()>>>),
+    Fut(Pin<Box<dyn Future<Output = Result<T, E>> + Send>>),
+    Sleep(Pin<Box<dyn Future<Output = ()> + Send>>),
     Done,
 }
 impl<T, E> fmt::Debug for State<T, E> {
@@ -82,8 +83,8 @@ pub fn retry<SLEEP, POL, F, Fut, T, E>(policy: POL, future_repeater: F) -> Retry
 where
     SLEEP: Sleepble + 'static,
     POL: RetryPolicy<E>,
-    F: Fn() -> Fut + 'static,
-    Fut: Future<Output = Result<T, E>> + 'static,
+    F: Fn() -> Fut + Send + 'static,
+    Fut: Future<Output = Result<T, E>> + Send + 'static,
 {
     Retry::new(policy, Box::new(move || Box::pin(future_repeater())))
 }
@@ -185,6 +186,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -219,7 +221,6 @@ mod tests {
         );
 
         //
-        #[cfg(feature = "std")]
         let now = std::time::Instant::now();
 
         match retry::<Sleep, _, _, _, _, _>(policy, || f(0)).await {
@@ -230,11 +231,8 @@ mod tests {
             }
         }
 
-        #[cfg(feature = "std")]
-        {
-            let elapsed_dur = now.elapsed();
-            assert!(elapsed_dur.as_millis() >= 300 && elapsed_dur.as_millis() <= 305);
-        }
+        let elapsed_dur = now.elapsed();
+        assert!(elapsed_dur.as_millis() >= 300 && elapsed_dur.as_millis() <= 305);
     }
 
     #[tokio::test]
@@ -254,7 +252,6 @@ mod tests {
 
         //
         tokio::spawn(async move {
-            #[cfg(feature = "std")]
             let now = std::time::Instant::now();
 
             match retry::<Sleep, _, _, _, _, _>(policy, || f(0)).await {
@@ -265,11 +262,8 @@ mod tests {
                 }
             }
 
-            #[cfg(feature = "std")]
-            {
-                let elapsed_dur = now.elapsed();
-                assert!(elapsed_dur.as_millis() >= 300 && elapsed_dur.as_millis() <= 305);
-            }
+            let elapsed_dur = now.elapsed();
+            assert!(elapsed_dur.as_millis() >= 300 && elapsed_dur.as_millis() <= 305);
         });
     }
 
@@ -291,7 +285,6 @@ mod tests {
         );
 
         //
-        #[cfg(feature = "std")]
         let now = std::time::Instant::now();
 
         match retry::<Sleep, _, _, _, _, _>(policy, || f(N.fetch_add(1, Ordering::SeqCst))).await {
@@ -302,10 +295,7 @@ mod tests {
             }
         }
 
-        #[cfg(feature = "std")]
-        {
-            let elapsed_dur = now.elapsed();
-            assert!(elapsed_dur.as_millis() >= 200 && elapsed_dur.as_millis() <= 205);
-        }
+        let elapsed_dur = now.elapsed();
+        assert!(elapsed_dur.as_millis() >= 200 && elapsed_dur.as_millis() <= 205);
     }
 }
