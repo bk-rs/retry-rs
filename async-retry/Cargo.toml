@@ -30,5 +30,5 @@ pin-project-lite = { version = "0.2", default-features = false }
 async-sleep = { version = "0.2", default-features = false, features = ["impl_tokio"] }
 retry-policy = { version = "0.1", default-features = false, features = ["std"], path = "../retry-policy" }
 
-tokio = { version = "1.16", features = ["macros", "rt-multi-thread", "time"] }
-once_cell = { version = "1.9" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+once_cell = { version = "1" }
