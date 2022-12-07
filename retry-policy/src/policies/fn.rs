@@ -1,5 +1,5 @@
 use alloc::boxed::Box;
-use core::{fmt, ops::ControlFlow, time::Duration};
+use core::{ops::ControlFlow, time::Duration};
 
 use retry_backoff::RetryBackoff;
 use retry_predicate::RetryPredicate;
@@ -12,8 +12,8 @@ pub struct Policy<PParams> {
     f: Box<dyn Fn(&PParams, usize) -> ControlFlow<StopReason, Duration> + Send + Sync>,
 }
 
-impl<PParams> fmt::Debug for Policy<PParams> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl<PParams> core::fmt::Debug for Policy<PParams> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("FnPolicy").finish_non_exhaustive()
     }
 }

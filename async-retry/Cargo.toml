@@ -1,6 +1,6 @@
 [package]
 name = "async-retry"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["vkill <vkill.net@gmail.com>"]
 edition = "2021"
 description = "Async Retry"
@@ -11,6 +11,7 @@ documentation = "https://docs.rs/async-retry"
 keywords = []
 categories = []
 readme = "README.md"
+rust-version = "1.58.0"
 
 [package.metadata.docs.rs]
 all-features = true
@@ -21,14 +22,14 @@ std = ["retry-policy/std"]
 
 [dependencies]
 async-sleep = { version = "0.2", default-features = false, features = ["timeout"] }
-retry-policy = { version = "0.1", default-features = false, path = "../retry-policy" }
+retry-policy = { version = "0.2", default-features = false, path = "../retry-policy" }
 
 futures-util = { version = "0.3", default-features = false }
 pin-project-lite = { version = "0.2", default-features = false }
 
 [dev-dependencies]
 async-sleep = { version = "0.2", default-features = false, features = ["impl_tokio"] }
-retry-policy = { version = "0.1", default-features = false, features = ["std"], path = "../retry-policy" }
+retry-policy = { version = "0.2", default-features = false, features = ["std"], path = "../retry-policy" }
 
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 once_cell = { version = "1" }
