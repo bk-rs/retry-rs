@@ -8,6 +8,7 @@ use crate::retry_policy::{RetryPolicy, StopReason};
 
 //
 pub struct Policy<PParams> {
+    #[allow(clippy::type_complexity)]
     f: Box<dyn Fn(&PParams, usize) -> ControlFlow<StopReason, Duration> + Send + Sync>,
 }
 

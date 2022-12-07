@@ -1,5 +1,3 @@
-use core::fmt;
-
 use retry_backoff::backoffs::google_cloud_workflows::Backoff;
 use retry_predicate::predicates::FnPredicate;
 
@@ -73,9 +71,9 @@ pub enum Error {
     Other,
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self)
+impl core::fmt::Display for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{self:?}")
     }
 }
 #[cfg(feature = "std")]
@@ -134,5 +132,11 @@ mod tests {
         }
         assert_eq!(policy.max_retries, 5);
         assert_eq!(policy.backoff, Backoff::default());
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn test_error_display() {
+        assert_eq!(alloc::format!("{}", Error::BadGateway), "BadGateway")
     }
 }

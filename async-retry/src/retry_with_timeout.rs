@@ -90,7 +90,7 @@ where
     T: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -208,27 +208,27 @@ mod tests {
             Err(err) => {
                 assert_eq!(&err.stop_reason, &StopReason::PredicateFailed);
                 for (i, err) in err.errors().iter().enumerate() {
-                    println!("{} {:?}", i, err);
+                    println!("{i} {err:?}");
                     match i {
                         0 => match err {
                             ErrorWrapper::Inner(FError(n)) => {
                                 assert_eq!(*n, 0)
                             }
-                            err => panic!("{} {:?}", i, err),
+                            err => panic!("{i} {err:?}"),
                         },
                         1 => match err {
                             ErrorWrapper::Timeout(TimeoutError::Timeout(dur)) => {
                                 assert_eq!(*dur, Duration::from_millis(50));
                             }
-                            err => panic!("{} {:?}", i, err),
+                            err => panic!("{i} {err:?}"),
                         },
                         2 => match err {
                             ErrorWrapper::Inner(FError(n)) => {
                                 assert_eq!(*n, 2)
                             }
-                            err => panic!("{} {:?}", i, err),
+                            err => panic!("{i} {err:?}"),
                         },
-                        n => panic!("{} {:?}", n, err),
+                        n => panic!("{n} {err:?}"),
                     }
                 }
             }
@@ -269,7 +269,7 @@ mod tests {
         {
             Ok(_) => {}
             Err(err) => {
-                panic!("{:?}", err)
+                panic!("{err:?}")
             }
         }
 
@@ -306,16 +306,16 @@ mod tests {
             Err(err) => {
                 assert_eq!(&err.stop_reason, &StopReason::MaxRetriesReached);
                 for (i, err) in err.errors().iter().enumerate() {
-                    println!("{} {:?}", i, err);
+                    println!("{i} {err:?}");
                     match i {
                         0 | 1 | 2 | 3 => match err {
                             ErrorWrapper::Timeout(TimeoutError::Timeout(dur)) => {
                                 assert_eq!(*dur, Duration::from_millis(50));
                             }
-                            err => panic!("{} {:?}", i, err),
+                            err => panic!("{i} {err:?}"),
                         },
 
-                        n => panic!("{} {:?}", n, err),
+                        n => panic!("{n} {err:?}"),
                     }
                 }
             }
