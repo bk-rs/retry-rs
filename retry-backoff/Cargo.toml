@@ -1,6 +1,6 @@
 [package]
 name = "retry-backoff"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["vkill <vkill.net@gmail.com>"]
 edition = "2021"
 description = "Retry Backoff"
@@ -27,12 +27,9 @@ impl_exponential_backoff = ["exponential-backoff", "std"]
 impl_backoff_rs = ["backoff-rs", "std"]
 
 [dependencies]
-exponential-backoff = { version = "1.1", default-features = false, optional = true }
+exponential-backoff = { version = "2", default-features = false, optional = true }
 backoff-rs = { version = "0.1", default-features = false, optional = true }
 
 [package.metadata.cargo-all-features]
 skip_optional_dependencies = true
-skip_feature_sets = [
-    ["impl_exponential_backoff"],
-    ["impl_backoff_rs"],
-]
+skip_feature_sets = [["impl_exponential_backoff"], ["impl_backoff_rs"]]

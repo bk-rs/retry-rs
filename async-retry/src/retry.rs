@@ -279,7 +279,7 @@ mod tests {
         static N: Lazy<AtomicUsize> = Lazy::new(|| AtomicUsize::new(0));
 
         let policy = SimplePolicy::new(
-            FnPredicate::from(|FError(n): &FError| vec![0, 1].contains(n)),
+            FnPredicate::from(|FError(n): &FError| [0, 1].contains(n)),
             3,
             FnBackoff::from(|_| Duration::from_millis(100)),
         );

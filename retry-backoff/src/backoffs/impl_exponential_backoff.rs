@@ -36,10 +36,10 @@ impl Backoff {
 //
 impl RetryBackoff for Backoff {
     fn delay(&self, attempts: usize) -> Duration {
-        self.next(attempts as u32).unwrap_or_else(|| {
-            self.next((attempts as u32).saturating_sub(1))
-                .expect("unreachable!()")
-        })
+        self.iter()
+            .nth(attempts)
+            .unwrap_or_else(|| Some(*self.max()))
+            .unwrap_or_else(|| *self.max())
     }
 
     fn name(&self) -> &str {
@@ -54,9 +54,24 @@ mod tests {
     #[test]
     fn test_impl_retry_backoff() {
         let mut backoff = Backoff::new(Duration::from_millis(100), None);
-        backoff.set_max(Some(Duration::from_secs(10)));
+        backoff.set_max(Duration::from_secs(1));
 
         assert!(RetryBackoff::delay(&backoff, 1) > Duration::from_millis(100));
+        assert!(RetryBackoff::delay(&backoff, 2) > Duration::from_millis(200));
+        assert!(RetryBackoff::delay(&backoff, 8) > Duration::from_millis(800));
+        assert!(RetryBackoff::delay(&backoff, 9) > Duration::from_millis(900));
+        assert_eq!(
+            RetryBackoff::delay(&backoff, 10),
+            Duration::from_millis(1000)
+        );
+        assert_eq!(
+            RetryBackoff::delay(&backoff, 11),
+            Duration::from_millis(1000)
+        );
+        assert_eq!(
+            RetryBackoff::delay(&backoff, 100),
+            Duration::from_millis(1000)
+        );
         assert_eq!(RetryBackoff::name(&backoff), "CrateExponentialBackoff");
     }
 }

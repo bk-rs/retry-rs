@@ -1,7 +1,10 @@
 [workspace]
 members = [
+    # 
     "async-retry",
+    # 
     "retry-backoff",
     "retry-policy",
     "retry-predicate",
 ]
+resolver = "2"

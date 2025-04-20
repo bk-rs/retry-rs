@@ -155,7 +155,6 @@ where
 mod tests {
     use super::*;
 
-    use alloc::vec;
     use core::{
         sync::atomic::{AtomicUsize, Ordering},
         time::Duration,
@@ -187,9 +186,7 @@ mod tests {
         static N: Lazy<AtomicUsize> = Lazy::new(|| AtomicUsize::new(0));
 
         let policy = SimplePolicy::new(
-            PredicateWrapper::new(FnPredicate::from(|FError(n): &FError| {
-                vec![0, 1].contains(n)
-            })),
+            PredicateWrapper::new(FnPredicate::from(|FError(n): &FError| [0, 1].contains(n))),
             3,
             FnBackoff::from(|_| Duration::from_millis(100)),
         );
@@ -308,7 +305,7 @@ mod tests {
                 for (i, err) in err.errors().iter().enumerate() {
                     println!("{i} {err:?}");
                     match i {
-                        0 | 1 | 2 | 3 => match err {
+                        0..=3 => match err {
                             ErrorWrapper::Timeout(TimeoutError::Timeout(dur)) => {
                                 assert_eq!(*dur, Duration::from_millis(50));
                             }

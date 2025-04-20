@@ -1,6 +1,6 @@
 [package]
 name = "retry-policy"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["vkill <vkill.net@gmail.com>"]
 edition = "2021"
 description = "Retry Policy"
@@ -23,5 +23,5 @@ alloc = ["retry-backoff/alloc", "retry-predicate/alloc"]
 # policies
 
 [dependencies]
-retry-backoff = { version = "0.1", default-features = false, path = "../retry-backoff" }
+retry-backoff = { version = "0.2", default-features = false, path = "../retry-backoff" }
 retry-predicate = { version = "0.1", default-features = false, path = "../retry-predicate" }
