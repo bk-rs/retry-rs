@@ -76,8 +76,8 @@ impl core::fmt::Display for Error {
         write!(f, "{self:?}")
     }
 }
-#[cfg(feature = "std")]
-impl std::error::Error for Error {}
+
+impl core::error::Error for Error {}
 
 #[cfg(test)]
 mod tests {

@@ -49,5 +49,4 @@ where
     }
 }
 
-#[cfg(feature = "std")]
-impl<T> std::error::Error for Error<T> where T: fmt::Debug {}
+impl<T> core::error::Error for Error<T> where T: fmt::Debug {}

@@ -94,8 +94,7 @@ where
     }
 }
 
-#[cfg(feature = "std")]
-impl<T> std::error::Error for ErrorWrapper<T> where T: fmt::Debug {}
+impl<T> core::error::Error for ErrorWrapper<T> where T: fmt::Debug {}
 
 impl<T> ErrorWrapper<T> {
     pub fn is_inner(&self) -> bool {
