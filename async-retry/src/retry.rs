@@ -8,8 +8,8 @@ use core::{
     task::{Context, Poll},
 };
 
-use async_sleep::{sleep, Sleepble};
-use futures_util::{future::FusedFuture, FutureExt as _};
+use async_sleep::{Sleepble, sleep};
+use futures_util::{FutureExt as _, future::FusedFuture};
 use pin_project_lite::pin_project;
 use retry_policy::RetryPolicy;
 
@@ -199,10 +199,10 @@ mod tests {
     use async_sleep::impl_tokio::Sleep;
     use once_cell::sync::Lazy;
     use retry_policy::{
+        StopReason,
         policies::SimplePolicy,
         retry_backoff::backoffs::FnBackoff,
         retry_predicate::predicates::{AlwaysPredicate, FnPredicate},
-        StopReason,
     };
 
     #[tokio::test]

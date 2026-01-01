@@ -2,11 +2,11 @@ use alloc::boxed::Box;
 use core::{convert::Infallible, fmt, future::Future, time::Duration};
 
 use async_sleep::{
-    timeout::{timeout, Error as TimeoutError},
     Sleepble,
+    timeout::{Error as TimeoutError, timeout},
 };
 use futures_util::TryFutureExt as _;
-use retry_policy::{retry_predicate::RetryPredicate, RetryPolicy};
+use retry_policy::{RetryPolicy, retry_predicate::RetryPredicate};
 
 use crate::retry::Retry;
 
@@ -163,10 +163,10 @@ mod tests {
     use async_sleep::impl_tokio::Sleep;
     use once_cell::sync::Lazy;
     use retry_policy::{
+        StopReason,
         policies::SimplePolicy,
         retry_backoff::backoffs::FnBackoff,
         retry_predicate::predicates::{AlwaysPredicate, FnPredicate},
-        StopReason,
     };
 
     #[tokio::test]
