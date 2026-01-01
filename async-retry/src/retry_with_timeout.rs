@@ -159,9 +159,9 @@ mod tests {
         sync::atomic::{AtomicUsize, Ordering},
         time::Duration,
     };
+    use std::sync::LazyLock;
 
     use async_sleep::impl_tokio::Sleep;
-    use once_cell::sync::Lazy;
     use retry_policy::{
         StopReason,
         policies::SimplePolicy,
@@ -183,7 +183,7 @@ mod tests {
         }
 
         //
-        static N: Lazy<AtomicUsize> = Lazy::new(|| AtomicUsize::new(0));
+        static N: LazyLock<AtomicUsize> = LazyLock::new(|| AtomicUsize::new(0));
 
         let policy = SimplePolicy::new(
             PredicateWrapper::new(FnPredicate::from(|FError(n): &FError| [0, 1].contains(n))),
@@ -246,7 +246,7 @@ mod tests {
         }
 
         //
-        static N: Lazy<AtomicUsize> = Lazy::new(|| AtomicUsize::new(0));
+        static N: LazyLock<AtomicUsize> = LazyLock::new(|| AtomicUsize::new(0));
 
         let policy = SimplePolicy::new(
             PredicateWrapper::new(AlwaysPredicate),
@@ -281,7 +281,7 @@ mod tests {
         }
 
         //
-        static N: Lazy<AtomicUsize> = Lazy::new(|| AtomicUsize::new(0));
+        static N: LazyLock<AtomicUsize> = LazyLock::new(|| AtomicUsize::new(0));
 
         let policy = SimplePolicy::new(
             PredicateWrapper::new(AlwaysPredicate),

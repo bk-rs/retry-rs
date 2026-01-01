@@ -37,4 +37,3 @@ retry-policy = { version = "0.3", default-features = false, features = [
 ], path = "../retry-policy" }
 
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
-once_cell = { version = "1" }
